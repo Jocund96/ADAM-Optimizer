@@ -1,0 +1,61 @@
+%----------ADAM optimizer by Bauhaus University
+
+% --- INPUTS ---
+% f         : Objective function handle
+% grad_f    : Gradient function handle
+% w0        : Initial guess (vector of size N x 1)
+
+% --- Convergence Criteria ---
+% max_iter  : Maximum number of iterations
+%           OR
+% error   : Acceptable error in the Objective function.
+
+% --- INITIALIZATION ---
+alpha = 0.001; % Learning rate
+beta1 = 0.9;  % Exponential Decay rates
+beta2 = 0.999;
+epsilon = 1e-8;
+
+function [w_opt, history] = adam_optimizer(cost_f, grad_f, w0, max_iter, alpha, beta1, beta2, epsilon)
+% Define validation rules and DEFAULT values
+    arguments
+        alpha = 0.001;
+        beta1 = 0.9;
+        beta2 = 0.999;
+        epsilon = 1e-8;
+    end
+
+
+% Initialize variables for the optimizer
+w = w0; % Current weight
+m = zeros(size(w0)); % First moment vector  m_0
+v = zeros(size(w0)); % Second moment vector  v_0
+t = 0; 
+
+%-----OPTIMIZATION LOOP
+
+% Loop start : terminate at convergence
+for t = 1:max_iter 
+%calculate the gradient from the given grad_f
+gradient = grad_f(w);
+
+%if the convergence criteria has reached, terminate the loop and return the
+%values
+
+%update the biased moment estimates
+m = beta1*m+(1-beta1)*gradient; %first moment estimate
+v = beta2*v+(1-beta2)*(gradient.^2); %second moment estimate
+
+%compute the bias corrected moments
+m_hat = m/(1-beta1^t);
+v_hat = v/(1-beta2^t);
+
+%update the parameters
+w = w-alpha*m_hat./(sqrt(v_hat) + epsilon);
+
+end
+% Loop end
+w_opt = w(t);
+%return w_opt, history;
+end
+%end function
