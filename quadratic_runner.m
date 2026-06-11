@@ -1,11 +1,11 @@
-% -------- Main script for running the ADAM optimizer
+% Main script for running the ADAM optimizer
 
 % Clear workspace and command window
 clear; clc; close all;
 
 % Create function handles pointing to your separate files
 
-%% ── Hyperparameters ─────────────────────────────────────
+%% ── Hyperparameters 
 
 w0 = 20.0;
 max_iter= 1500;       
@@ -25,7 +25,7 @@ g = @(x) 2*x + 4;
 w_opt
 history
 
-% --- Instead of calling visualizer() for a 1D function ---
+% Instead of calling visualizer() for a 1D function ---
 figure;
 % Plot the tracking of the weight over time
 plot(history.w, 'b.-', 'LineWidth', 1.5);

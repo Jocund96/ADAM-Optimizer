@@ -8,12 +8,12 @@ clear; clc; close all;
 %% ── Hyperparameters ─────────────────────────────────────
 
 w0 = [-1.5; 2.0];
-max_iter= 1500;       
+max_iter= 15000;       
 alpha = 0.01;      
 beta1 = 0.9;        
 beta2 = 0.999;      
 epsilon = 1e-8;
-tolerance = 1e-6;
+tolerance = 1e-5;
 
 
 f = @(x) (1 - x(1))^2 + 100 * (x(2) - x(1)^2)^2;

@@ -60,6 +60,6 @@ end
 % Loop end
 
 w_opt = w;  %return the optimized values
-
+fprintf('Number of iterations to convergence: (%.4d)\n', t);
 end
 %end function
