@@ -34,24 +34,28 @@ t = 0; %loop iterations
 history.w = [];
 
 % OPTIMIZATION LOOP
-
 % Loop start : terminate at convergence
 while (norm(grad_f(w)) > tolerance) && (t < max_iter)
-
+    % Timestep counter
     t = t+1;
-    %calculate the gradient from the given grad_f
+
+    % Get gradients w.r.t. stochastic objective at timestep t
     gradient = grad_f(w);
     
-    %update the biased moment estimates
+    % Update exponential moving averages of the gradient 
     m = beta1*m+(1-beta1)*gradient; %first moment estimate
+
+    % Update squared gradient
     v = beta2*v+(1-beta2)*(gradient.^2); %second moment estimate
     
-    %compute the bias corrected moments
+    % Compute bias-corrected first moment estimate
     m_hat = m/(1-beta1^t);
+
+    % Compute bias-corrected second moment estimate
     v_hat = v/(1-beta2^t);
     
     %update the parameters
-    w = w-alpha*m_hat./(sqrt(v_hat) + epsilon);
+    w = w - alpha * m_hat./(sqrt(v_hat) + epsilon);
     
     %record the history
     history.w(:,t) = w;
