@@ -7,7 +7,7 @@ clear; clc; close all;
 
 % Hyperparameters
 
-w0 = [1.5; 0.0];
+w0 = [-1.5; 2.0];
 max_iter= 15000;       
 alpha = 0.01;      
 beta1 = 0.9;        
@@ -22,13 +22,11 @@ g = @(x) [2*x(1)*x(2)^6+2*x(1)*x(2)^4-4*x(1)*x(2)^3-2*x(1)*x(2)^2-4*x(1)*x(2)+6*
 
 % Call your Adam implementation
 [w_opt, history] = adam_optimizer(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance);
-
-% Theoretical global minimum
-w_global_min = fminsearch(f, w0);
-
 % Print the results
-fprintf('Theoretical global minimum found by fminsearch: (%.4f, %.4f)\n', w_global_min(1), w_global_min(2));
-fprintf('Final Coordinates found by Adam optimizer:    (%.4f, %.4f)\n', w_opt(1), w_opt(2));
+w_target = fminsearch(f, w0);
+
+fprintf('Theoretical target found by fminsearch: (%.4f, %.4f)\n', w_target(1), w_target(2));
+fprintf('Final Coordinates Found by Your Adam:    (%.4f, %.4f)\n', w_opt(1), w_opt(2));
 
 % Instead of calling visualize_adam() for plotting
-visualize(f,history,w0,w_opt);
+visualize_adam(f,history,w0,w_opt);

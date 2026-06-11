@@ -1,6 +1,20 @@
 % Optimization Visualization
+function visualize(f, history, w0, w_opt)
+
+% The path matrix
+w_all = [w0, history.w];
+
+% Calculate the function height value history 
+f_all = zeros(1, size(w_all, 2));
+for i = 1:size(w_all, 2)
+    f_all(i) = f(w_all(:, i));
+end
+
 % Setup a grid
-[X1, X2] = meshgrid(linspace(-1, 4.5, 100), linspace(-1.5, 1.5, 100));
+% for Beale
+%[X1, X2] = meshgrid(linspace(-1, 4.5, 100), linspace(-1.5, 1.5, 100)); 
+% for Rosenbrock
+[X1, X2] = meshgrid(linspace(-2, 2, 100), linspace(-1, 3, 100));
 
 % Evaluate the objective function heights across the grid via linear indexing
 Z = zeros(size(X1));
@@ -25,7 +39,7 @@ figure('Name', '2D Contour Plot', 'NumberTitle', 'off')
 hold on
 contour(X1, X2, Z_plot, 40, 'LineWidth', 0.8, 'HandleVisibility', 'off') 
 plot(w_all(1,:), w_all(2,:), 'o-r', 'LineWidth', 1.5, 'MarkerSize', 4, 'DisplayName', 'Adam Path')
-plot(3.0, 0.5, 'g*', 'MarkerSize', 12, 'LineWidth', 2, 'DisplayName', 'Global Minimum (3.0, 0.5)')
+plot(w_opt(1), w_opt(2), 'g*', 'MarkerSize', 12, 'LineWidth', 2, 'DisplayName', 'Global Minimum (3.0, 0.5)')
 hold off
 set(gca, 'FontSize', 16);
 xlabel('w1');
@@ -54,8 +68,8 @@ z_path = scale_fn(f_all);
 plot3(w_all(1,:), w_all(2,:), z_path, 'o-r', 'LineWidth', 2.5, 'MarkerSize', 4, 'DisplayName', 'Adam Path')
 
 % Plotting the green star point for the minimum
-z_min = scale_fn(f([3.0; 0.5]));
-plot3(3.0, 0.5, z_min, 'g*', 'MarkerSize', 14, 'LineWidth', 3, 'DisplayName', 'Global Minimum')
+z_min = scale_fn(f(w_opt));
+plot3(w_opt(1), w_opt(2), z_min, 'g*', 'MarkerSize', 14, 'LineWidth', 3, 'DisplayName', 'Global Minimum')
 hold off
 set(gca, 'FontSize', 14);
 xlabel('w1 (x)');
@@ -65,3 +79,4 @@ title('3D Plot');
 legend('Location', 'best');
 view(-45, 45)
 grid on
+end

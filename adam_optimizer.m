@@ -1,14 +1,14 @@
-%----------ADAM optimizer by Bauhaus University
+% ADAM optimizer by Bauhaus University
 
-% --- INPUTS ---
+% INPUTS 
 % f         : Objective function handle
 % grad_f    : Gradient function handle
 % w0        : Initial guess (vector of size N x 1)
 
-% --- Convergence Criteria ---
+% Convergence Criteria
 % max_iter  : Maximum number of iterations
-%           OR
-% error   : Acceptable error in the Objective function.
+% OR/AND
+% epsilon_t : Tolerance threshold. if the length (norm) of the gr< 
 
 function [w_opt, history] = adam_optimizer(grad_f, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance)
 % Define validation rules and DEFAULT values
@@ -33,28 +33,28 @@ t = 0; %loop iterations
 % Initialize our custom history ledger folder
 history.w = [];
 
-%-----OPTIMIZATION LOOP
+% OPTIMIZATION LOOP
 
 % Loop start : terminate at convergence
 while (norm(grad_f(w)) > tolerance) && (t < max_iter)
 
-t = t+1;
-%calculate the gradient from the given grad_f
-gradient = grad_f(w);
-
-%update the biased moment estimates
-m = beta1*m+(1-beta1)*gradient; %first moment estimate
-v = beta2*v+(1-beta2)*(gradient.^2); %second moment estimate
-
-%compute the bias corrected moments
-m_hat = m/(1-beta1^t);
-v_hat = v/(1-beta2^t);
-
-%update the parameters
-w = w-alpha*m_hat./(sqrt(v_hat) + epsilon);
-
-%record the history
-history.w(:,t) = w;
+    t = t+1;
+    %calculate the gradient from the given grad_f
+    gradient = grad_f(w);
+    
+    %update the biased moment estimates
+    m = beta1*m+(1-beta1)*gradient; %first moment estimate
+    v = beta2*v+(1-beta2)*(gradient.^2); %second moment estimate
+    
+    %compute the bias corrected moments
+    m_hat = m/(1-beta1^t);
+    v_hat = v/(1-beta2^t);
+    
+    %update the parameters
+    w = w-alpha*m_hat./(sqrt(v_hat) + epsilon);
+    
+    %record the history
+    history.w(:,t) = w;
 
 end
 % Loop end
