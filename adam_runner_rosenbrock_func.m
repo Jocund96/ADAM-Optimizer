@@ -6,14 +6,13 @@ clear; clc; close all;
 % Create function handles pointing to your separate files
 
 % Hyperparameters
-
-w0 = [-1.5; 2.0];
-max_iter= 15000;       
-alpha = 0.01;      
-beta1 = 0.9;        
-beta2 = 0.999;      
-epsilon = 1e-8;
-tolerance = 1e-5;
+w0 = [-1.5; 2.0]; % Initial guess
+max_iter= 15000;  % Maximum iterations    
+alpha = 0.01;   % Stepsize     
+beta1 = 0.9;    % Exponential Decay rate 1st moment      
+beta2 = 0.999;  % Exponential Decay rate 2nd moment      
+epsilon = 1e-8; % Smoothing term to prevent a division by zero
+tolerance = 1e-5; % Tolerance threshold. if the length (norm) of the gr<
 
 % Sample implementation with the Rosenbrock function. Global minima: (1, 1)
 f = @(x) (1 - x(1))^2 + 100 * (x(2) - x(1)^2)^2;
