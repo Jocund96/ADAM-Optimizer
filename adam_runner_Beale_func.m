@@ -19,7 +19,7 @@ f = @(x) (1.5 - x(1) + x(1)*x(2))^2 + (2.25 - x(1) + x(1)*x(2)^2)^2 + (2.625 - x
 g = @(x) [2*x(1)*x(2)^6+2*x(1)*x(2)^4-4*x(1)*x(2)^3-2*x(1)*x(2)^2-4*x(1)*x(2)+6*x(1)+21/4*x(2)^3+9/2*x(2)^2+3*x(2)-51/4; 
     6*x(1)^2*x(2)^5+4*x(1)^2*x(2)^3-6*x(1)^2*x(2)^2-2*x(1)^2*x(2)-2*x(1)^2+63/4*x(1)*x(2)^2+9*x(1)*x(2)+3*x(1)];
 
-% Call your Adam implementation
+% Call Adam implementation
 [w_opt, history] = adam_optimizer(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance);
 
 % Theoretical global minimum

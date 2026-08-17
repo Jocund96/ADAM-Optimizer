@@ -19,7 +19,7 @@ f = @(x) (1 - x(1))^2 + 100 * (x(2) - x(1)^2)^2;
 g = @(x) [ -2*(1-x(1)) - 400*x(1)*(x(2) - x(1)^2);
               200*(x(2) - x(1)^2) ];
 
-% Call your Adam implementation
+% Call Adam implementation
 [w_opt, history] = adam_optimizer(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance);
 
 % Theoretical global minimum
