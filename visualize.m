@@ -12,9 +12,9 @@ end
 
 % Setup a grid
 % for Beale
-%[X1, X2] = meshgrid(linspace(-1, 4.5, 100), linspace(-1.5, 1.5, 100)); 
+[X1, X2] = meshgrid(linspace(-1, 4.5, 500), linspace(-1.5, 1.5, 500)); 
 % for Rosenbrock
-[X1, X2] = meshgrid(linspace(-2, 2, 100), linspace(-1, 3, 100));
+%[X1, X2] = meshgrid(linspace(-2, 2, 1000), linspace(-1, 3, 1000));
 
 % Evaluate the objective function heights across the grid via linear indexing
 Z = zeros(size(X1));
