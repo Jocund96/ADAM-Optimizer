@@ -10,7 +10,7 @@
 % OR/AND
 % epsilon_t : Tolerance threshold. if the length (norm) of the gr< 
 
-function [w_opt, history] = adam_optimizer(grad_f, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance)
+function [w_opt, history, verbose] = adam_optimizer(grad_f, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance)
 % Define validation rules and DEFAULT values
 arguments
         grad_f   function_handle
@@ -32,6 +32,7 @@ t = 0; %loop iterations
 
 % Initialize our custom history ledger folder
 history.w = [];
+verbose.iteration = 0;
 
 % Gradient at the initial guess; refreshed at the end of every
 % iteration so the while-condition and the loop body share one
@@ -70,6 +71,7 @@ end
 % Loop end
 
 w_opt = w;  %return the optimized values
-fprintf('Number of iterations to convergence: (%.4d)\n', t);
+%fprintf('Number of iterations to convergence: (%.4d)\n', t);
+verbose.iteration = t;
 end
 %end function
