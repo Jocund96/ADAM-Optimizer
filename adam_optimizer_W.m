@@ -10,7 +10,7 @@
 % OR/AND
 % epsilon_t : Tolerance threshold. if the length (norm) of the gr< 
 
-function [w_opt, history] = adam_optimizer(grad_f, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance)
+function [w_opt, history] = adam_optimizer_W(grad_f, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance, lambda)
 % Define validation rules and DEFAULT values
 arguments
         grad_f   function_handle
@@ -21,6 +21,7 @@ arguments
         beta2    double = 0.999      
         epsilon  double = 1e-8   
         tolerance double = 1e-6
+        lambda double = 0
 end
 
 
@@ -56,8 +57,8 @@ while (norm(gradient) > tolerance) && (t < max_iter)
     % Compute bias-corrected second moment estimate
     v_hat = v/(1-beta2^t);
     
-    %update the parameters
-    w = w - alpha * m_hat./(sqrt(v_hat) + epsilon);
+    %update the parameters with Decoupled Weight Decay (AdamW)
+    w = w - alpha * m_hat ./ (sqrt(v_hat) + epsilon) - alpha * lambda * w;
 
     %record the history
     history.w(:,t) = w;
