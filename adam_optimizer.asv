@@ -30,19 +30,24 @@ m = zeros(size(w0)); % First moment vector  m_0
 v = zeros(size(w0)); % Second moment vector  v_0
 t = 0; %loop iterations 
 
+%ADAM Hyperparameter descent
+hyper_d = zeros
+
 % Initialize our custom history ledger folder
 history.w = [];
 
+% Gradient at the initial guess; refreshed at the end of every
+% iteration so the while-condition and the loop body share one
+% evaluation per point instead of computing grad_f(w) twice.
+gradient = grad_f(w);
+
 % OPTIMIZATION LOOP
 % Loop start : terminate at convergence
-while (norm(grad_f(w)) > tolerance) && (t < max_iter)
+while (norm(gradient) > tolerance) && (t < max_iter)
     % Timestep counter
     t = t+1;
 
-    % Get gradients w.r.t. stochastic objective at timestep t
-    gradient = grad_f(w);
-    
-    % Update exponential moving averages of the gradient 
+    % Update exponential moving averages of the gradient
     m = beta1*m+(1-beta1)*gradient; %first moment estimate
 
     % Update squared gradient
@@ -59,6 +64,10 @@ while (norm(grad_f(w)) > tolerance) && (t < max_iter)
     
     %record the history
     history.w(:,t) = w;
+
+    % Gradient at the updated parameters: used by the next
+    % while-condition check and the next iteration body
+    gradient = grad_f(w);
 
 end
 % Loop end

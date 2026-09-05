@@ -34,16 +34,24 @@ optimizers = {
     struct('name', 'ADAM with Double Gradient',  'fn', @(g, w0) adam_optimizer_DG(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance))
 };
 
+winner.name = "";
+winner.iter = 0;
+
 %loop through all the optimizers
 for k = 1:numel(optimizers)
     opt = optimizers{k};
     fprintf('========Results %s=======\n', opt.name);
     tic;
-    [w_opt, history] = opt.fn(g, w0);
+    [w_opt, history, verbose] = opt.fn(g, w0);
+    if  verbose.iteration < max_iter
+        winner.name = opt.name;
+        winner.iter = verbose.iteration;
+    end
+        
     benchmark_values(f, g, w_global_min, w_opt, history);
 end
-
-
+fprintf('The fastest converging algorithm is %s ', winner.name);
+fprintf('with %u iterations for convergence \n', winner.iter)
 
 % Function handles for 100D Rosenbrock
 function f_val = extended_rosenbrock_f(x)
