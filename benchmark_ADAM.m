@@ -32,24 +32,35 @@ optimizers = {
     struct('name', 'AdamW',                      'fn', @(g, w0) adam_optimizer_W(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance, lambda))
     struct('name', 'AMSGrad',                    'fn', @(g, w0) adam_optimizer_AMSGrad(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance))
     struct('name', 'ADAM with Double Gradient',  'fn', @(g, w0) adam_optimizer_DG(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance))
+    struct('name', 'ADAM with Preconditions',  'fn', @(g, w0) adam_optimizer_preconditioned(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance))
 };
 
 winner.name = "";
 winner.iter = 0;
 
+results = struct('Optimizer', {}, 'Iterations', {}, 'Time_s', {}, ...
+                  'f_w_opt', {}, 'L2_Error', {}, 'GradNorm', {});
+
 %loop through all the optimizers
 for k = 1:numel(optimizers)
     opt = optimizers{k};
-    fprintf('========Results %s=======\n', opt.name);
     tic;
     [w_opt, history, verbose] = opt.fn(g, w0);
+    elapsed = toc;
+
     if  verbose.iteration < max_iter
         winner.name = opt.name;
         winner.iter = verbose.iteration;
     end
-        
-    benchmark_values(f, g, w_global_min, w_opt, history);
+
+    results(k) = benchmark_row(opt.name, f, g, w_global_min, w_opt, elapsed, verbose.iteration);
 end
+
+fprintf('\n');
+format short e
+disp(struct2table(results));
+format short
+
 fprintf('The fastest converging algorithm is %s ', winner.name);
 fprintf('with %u iterations for convergence \n', winner.iter)
 
@@ -78,17 +89,12 @@ function grad_val = extended_rosenbrock_g(x)
     grad_val(D_len) = 200 * (x(D_len) - x(D_len-1).^2);
 end
 
-function benchmark_values(f, g, w_global_min, w, history)
-
-    elapsed = toc;
-    fprintf('Time elapsed:  %.2f seconds\n', elapsed);
-
-    % Print summary results
-    fprintf('Final Objective Value f(w_opt):          %.6e\n', f(w));
-    fprintf('Final L2 Error norm(w_opt - w_global):   %.6e\n', norm(w - w_global_min));
-    fprintf('Gradient Norm at Convergence:            %.6e\n', norm(g(w)));
-    fprintf('Coordinate Value Range:                  [min = %.4f, max = %.4f]\n\n', min(w), max(w));
-
-    % Visualize the optimization results for high dimension
-    %visualize_100D(f, g, history, w0, w_opt);
+% Computes one optimizer's summary metrics as a row for the comparison table
+function row = benchmark_row(name, f, g, w_global_min, w, elapsed, iterations)
+    row.Optimizer  = string(name);
+    row.Iterations = uint32(iterations);
+    row.Time_s     = elapsed;
+    row.f_w_opt    = f(w);
+    row.L2_Error   = norm(w - w_global_min);
+    row.GradNorm   = norm(g(w));
 end
