@@ -33,7 +33,7 @@ t = 0; %loop iterations
 
 % Initialize our custom history ledger folder
 history.w = [];
-verbose.iterations = 0;
+verbose.iteration = 0;
 
 % Gradient at the initial guess; refreshed at the end of every
 % iteration so the while-condition and the loop body share one
