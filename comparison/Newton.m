@@ -51,4 +51,4 @@ fprintf('\nThe optimal point (%f,%f)  (objective value = %f)  was found after %d
 
 
 % visualize the optimizer steps and convergence
-visualize
+visualize_comparison

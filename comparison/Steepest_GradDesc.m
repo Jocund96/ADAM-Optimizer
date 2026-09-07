@@ -58,6 +58,6 @@ fprintf('\nThe norm of the gradient is  (%f) eigenvalues of the hessian are (%f,
 % Task f) Task g)
 % visualize the optimizer steps and convergence
 
-visualize
+visualize_comparison
 
 
