@@ -1,11 +1,15 @@
-# Ignore everything in this folder
-*
+# LaTeX auxiliary and build files
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.fdb_latexmk
+*.fls
+*.synctex.gz
 
-# Keep all subdirectories so git can inspect them
-!*/
-
-# Whitelist compiled PDF files
-!*.pdf
-
-# Explicitly ensure .gitignore itself is tracked or untracked as needed
-!.gitignore
+# Ignore old/deprecated folders replaced by figures/
+comparison/
+average problem plots/
+extracted_images/
