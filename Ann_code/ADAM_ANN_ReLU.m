@@ -6,12 +6,6 @@ x = 1:1:200;                 % 1×200: 200 samples, 1 feature
 Y = sin(0.1*x) + 0.05*randn(size(x));
 
 
-% ---- Standardize with training statistics only ----
-%mu_x = mean(x);  sd_x = std(x);
-%mu_y = mean(Y);  sd_y = std(Y);
-%X  = (x - mu_x) / sd_x;
-%Ys = (Y - mu_y) / sd_y;
-
 xMin = min(x);  xMax = max(x);
 X   = 2*(x - xMin)/(xMax - xMin) - 1;
 layers = [1, 100, 1];    %[input_dim, hidden_dim, output_dim]
@@ -24,16 +18,7 @@ params = train_adam(X, Y, layers, num_epochs, learning_rate);
 
 [yPred, cache] = forward(X, params);
 
-figure
-plot(x, Y, 'b.', 'MarkerSize', 8);        % FIX: plot over original x (optional)
-hold on                                   % FIX: without this the red line erased the blue one
-plot(x, yPred, 'r-', 'LineWidth', 2);
-legend('data', 'ANN'); grid on
-title('my first trained NN')
-
-figure
-plot(x, yPred - Y)
-title('residuals'); grid on
+Visualize(x,Y,yPred);
 
 end
 
@@ -155,4 +140,19 @@ for i = 1:length(fields)
     % Update
     params.(key) = params.(key) - lr * m_hat ./ (sqrt(v_hat) + eps);
 end
+end
+
+% Visualization function
+function Visualize(x,Y,yPred)
+
+figure                
+plot(x, yPred, 'r-', 'LineWidth', 2);
+hold on        
+plot(x, Y, 'b.', 'MarkerSize', 8); 
+legend('data', 'ANN'); grid on
+title('my first trained NN')
+
+figure
+plot(x, yPred - Y)
+title('residuals'); grid on
 end

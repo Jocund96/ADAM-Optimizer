@@ -20,19 +20,10 @@ params = train_adam(X, Y, layers, num_epochs, learning_rate);
 
 [yPred, cache] = forward(X, params);
 
-figure
-plot(x, Y, 'b.', 'MarkerSize', 8);        % FIX: plot over original x (optional)
-hold on                                   % FIX: without this the red line erased the blue one
-plot(x, yPred, 'r-', 'LineWidth', 2);
-legend('data', 'ANN'); grid on
-title('my first trained NN')
-
-figure
-plot(x, yPred - Y)
-title('residuals'); grid on
-
+Visualize(x,Y,yPred);
 
 end
+
 
 
 function [params] = train_adam(X, Y, layers, num_epochs, learning_rate)
@@ -147,4 +138,20 @@ for i = 1:length(fields)
     % Update
     params.(key) = params.(key) - lr * m_hat ./ (sqrt(v_hat) + eps);
 end
+
+end
+
+% Visualization function
+function Visualize(x,Y,yPred)
+
+figure                
+plot(x, yPred, 'r-', 'LineWidth', 2);
+hold on        
+plot(x, Y, 'b.', 'MarkerSize', 8); 
+legend('data', 'ANN'); grid on
+title('my first trained NN')
+
+figure
+plot(x, yPred - Y)
+title('residuals'); grid on
 end
