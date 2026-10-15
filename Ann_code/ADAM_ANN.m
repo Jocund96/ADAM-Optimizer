@@ -1,16 +1,11 @@
-function ADAM_ANN_Tanh
-clc; clear; close all;
 % c) T.Lahmer, 2026
 
-%% ====== Data
-x = 1:1:200;
-% ---- the function
-Y = sin(0.2*x) + 0.05*randn(1,200);
+% Output = trained weights, biases and losses + the final prediction of X 
+%Input = function to optimize + layers + epochs + learning rate 
 
-%% ==== Hyper-Parameters
-layers = [1, 40, 1];  %[input_dim, hidden_dim, output_dim]
-num_epochs = 20000;
-learning_rate = 0.01;
+function [results, losses] = ADAM_ANN(x, Y, layers, num_epochs, activation, learning_rate)
+
+activation = 'egal';
 
 %% ===== Split the data into sets
 % ---- Used a standard 70/15/15 split
@@ -42,8 +37,16 @@ fprintf('\nFinal MSE train: %0.5f  val: %0.5f  test: %0.5f\n', ...
 xFine = linspace(min(x), max(x), 1000);
 yFine = forward_propagate(Scale(xFine, xMin, xMax), params);
 
-%% === The Plots for data visualization
-Visualize(layers, xTr,YTr,xVa,YVa,xTe,YTe, xFine, yFine, trainLoss, valLoss, mean_testLoss);
+%% === Return the data
+results.params = params;
+results.xFine = xFine;
+results.yFine = yFine;
+
+losses.trainLoss = trainLoss;
+losses.valLoss = valLoss;
+losses.testLoss = mean_testLoss;
+
+fprintf('=== ANN training complete ===');
 
 end
 
