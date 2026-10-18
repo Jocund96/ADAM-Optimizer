@@ -1,0 +1,6 @@
+100D 
+"ADAM wit Twin Gradient"         14921       3.3280e-01    3.9866e+00    1.9933e+00    9.9013e-06
+
+
+2D
+iterations 3228

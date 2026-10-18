@@ -29,7 +29,7 @@
     urlcolor=black
 }
 
-% Command for highlighting newly added text (switched to black)
+% Command for text revisions (set to standard black for final document)
 \newcommand{\added}[1]{#1}
 
 \title{\textbf{ADAM Optimizer: Theory, Implementation, and Benchmark Analysis}\\[0.3em]
@@ -436,7 +436,7 @@ Design Variable Range $[\min(w^*), \max(w^*)]$ & $[-0.9933, 1.0000]$ \\
 
 \added{\subsection{Comparative Benchmark of Modern ADAM Variants}}
 
-\added{To investigate algorithmic behavior across different optimizer formulations, we evaluated five variants on the same 100-dimensional Extended Rosenbrock benchmark ($w_0 = [-1.5, 2.0, \dots]^T$, $\alpha = 0.005$, $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\varepsilon = 10^{-8}$, $\tau = 10^{-5}$, max iterations $25{,}000$). Table~\ref{tab:100d_variants_benchmark} summarizes the empirical performance metrics.}
+\added{To investigate algorithmic behavior across different optimizer formulations, we evaluated six variants on the same 100-dimensional Extended Rosenbrock benchmark ($w_0 = [-1.5, 2.0, \dots]^T$, $\alpha = 0.005$, $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\varepsilon = 10^{-8}$, $\tau = 10^{-5}$, max iterations $25{,}000$). For the dual-trajectory twin variant, the second starting point was initialized symmetrically as $w_{02} = [2.0, -1.5, \dots]^T$. Table~\ref{tab:100d_variants_benchmark} summarizes the empirical performance metrics. Note that Table~\ref{tab:100d_variants_benchmark} reports pure optimizer loop execution times without visualization logging, where baseline ADAM runs in $0.11$~s (compared to $0.96$~s in Table~\ref{tab:100d_metrics} when recording full step-by-step diagnostic trajectories).}
 
 \added{\begin{table}[H]
 \centering
@@ -451,6 +451,7 @@ ADAM & $15{,}094$ & $0.11$ & $3.9866$ & $1.9933$ & $9.85 \times 10^{-6}$ \\
 AdamW ($\lambda = 0.1$) & $25{,}000$ & $0.16$ & $\mathbf{0.0024}$ & $\mathbf{0.0527}$ & $2.3474$ \\
 AMSGrad & $25{,}000$ & $0.16$ & $98.3683$ & $9.9052$ & $3.4744$ \\
 ADAM-DG (Hypergradient) & $\mathbf{8{,}736}$ & $\mathbf{0.07}$ & $3.9866$ & $1.9933$ & $9.18 \times 10^{-6}$ \\
+ADAM (Twin Gradient) & $14{,}921$ & $0.33$ & $3.9866$ & $1.9933$ & $9.90 \times 10^{-6}$ \\
 Preconditioned ADAM & $25{,}000$ & $0.91$ & $3.9874$ & $1.9933$ & $1.4066$ \\
 \bottomrule
 \end{tabular}
@@ -461,6 +462,7 @@ Preconditioned ADAM & $25{,}000$ & $0.91$ & $3.9874$ & $1.9933$ & $1.4066$ \\
     \item \textbf{Local Minimum Basin vs. Saddle Point (ADAM \& ADAM-DG):} Both standard ADAM and ADAM-DG successfully satisfied the gradient convergence tolerance $\tau = 10^{-5}$, settling at $w_1^* = -0.9933$ and $w_i^* = 1.0000$ for $i \ge 2$, with $f(w^*) \approx 3.9866$. Spectral analysis confirms that all $100$ eigenvalues of the Hessian at this point are strictly positive, ranging from $\lambda_{\min} \approx 0.499$ to $\lambda_{\max} \approx 1801.6$. This proves that the optimizers converged to a genuine, highly flat local minimum basin rather than stalling at a saddle point, matching the theoretical stationary point analysis of Kok and Sandrock \cite{kok2009locating}.
     \item \textbf{Decoupled Weight Decay Mechanics (AdamW):} AdamW \cite{loshchilov2017decoupled} reached the lowest objective value ($f = 0.0024$) and closest distance to the global minimum ($\|w^* - w^*_{\text{global}}\|_2 = 0.0527$). However, it reached the iteration limit because the gradient norm remained at $2.3474$. In AdamW, parameter updates include a direct decay term $-\alpha \lambda w_t$ independent of the gradient. Consequently, equilibrium occurs where the objective gradient balances the regularization pull ($\nabla f(w) \approx \lambda w$), meaning $\|\nabla f(w)\|_2$ does not vanish to zero.
     \item \textbf{Denominator Saturation and Freezing (AMSGrad):} AMSGrad \cite{reddi2018convergence} failed to traverse the valley, stalling at $f = 98.3683$ with coordinates $w_6$ through $w_{100}$ remaining near their starting values. Because AMSGrad enforces $\hat{v}_t = \max(\hat{v}_{t-1}, v_t)$, large initial gradient spikes permanently inflated the denominator, suppressing effective step sizes for the remainder of the run.
+    \item \textbf{Dual-Trajectory Performance (ADAM with Twin Gradient):} The twin-modulated variant terminated in $14{,}921$ iterations, slightly ahead of standard ADAM ($15{,}094$ iterations). Termination was triggered by Twin~1 satisfying gradient tolerance ($\|\nabla f(w_1)\|_2 \le 10^{-5}$) at the local minimum plateau ($f = 3.9866$). Although Twin~2 reached the global basin ($f(w_2) = 1.24 \times 10^{-7}$), its gradient norm was $4.40 \times 10^{-4}$, causing the algorithm to select Twin~1 as $w^*$. Evaluating two gradients per step doubled total workload to $29{,}842$ evaluations ($0.33$~s), showing that the twin coupling added substantial computational overhead without guaranteeing that the global basin point would have the smaller gradient norm.
 \end{itemize}}
 
 % =========================================================================
@@ -522,6 +524,109 @@ Preconditioned ADAM & $25{,}000$ & $0.91$ & $3.9874$ & $1.9933$ & $1.4066$ \\
     \end{equation}
     SPSA requires only $2$ function evaluations per step regardless of dimension $D$. The stochastic perturbation noise is subsequently smoothed by ADAM's momentum accumulator $m_t$.
 \end{itemize}}
+
+\added{\subsection{Twin-Gradient Step-Length Modulation}}
+
+\added{Standard ADAM updates a single solution vector, using exponential moving averages to move through narrow ravines. Inspired by De Magistris et al.~\cite{demagistris2026twin}, we implement a dual-trajectory version with two iterates, $w_1$ and $w_2$, initialized from different points. Unlike the full framework in~\cite{demagistris2026twin}, which uses Adaptive Barzilai--Borwein ($\text{ABB}_{\min}$) steps, damping, and orthogonal initialization, our implementation couples standard ADAM directions through a closed-form distance-minimizing step multiplier clamped to $[0.5, 3.5]$.}
+
+\added{\paragraph{Algorithm Formulation:}
+At iteration $t$, each trajectory independently computes its gradient and nominal ADAM step vector:
+\begin{equation}
+s_1 = -\alpha \frac{\hat{m}_1}{\sqrt{\hat{v}_1} + \varepsilon}, \qquad s_2 = -\alpha \frac{\hat{m}_2}{\sqrt{\hat{v}_2} + \varepsilon}
+\end{equation}
+Instead of applying the fixed stepsize $\alpha$ along both directions, scalar multipliers $\gamma_1, \gamma_2$ are chosen at every iteration to minimize the squared Euclidean distance between the next positions:
+\begin{equation}
+\min_{\gamma_1, \gamma_2} \frac{1}{2} \left\| (w_1 + \gamma_1 s_1) - (w_2 + \gamma_2 s_2) \right\|_2^2
+\end{equation}
+Setting the partial derivatives with respect to $\gamma_1$ and $\gamma_2$ to zero yields the $2 \times 2$ symmetric linear system:
+\begin{equation}
+\begin{bmatrix}
+s_1^T s_1 & -s_1^T s_2 \\
+-s_1^T s_2 & s_2^T s_2
+\end{bmatrix}
+\begin{bmatrix}
+\gamma_1 \\
+\gamma_2
+\end{bmatrix}
+=
+\begin{bmatrix}
+-s_1^T \delta \\
+s_2^T \delta
+\end{bmatrix}, \qquad \text{with } \delta = w_1 - w_2
+\end{equation}
+Solving this $2 \times 2$ Gram system requires only vector inner products, adding $\mathcal{O}(D)$ operations per step.}
+
+\added{\paragraph{Safeguards and Clamp Behavior:}
+Two safeguards stabilize the coupling without an objective line search:
+\begin{enumerate}
+    \item \textbf{Collinearity check:} We compute $\det_{\text{norm}} = 1 - \cos^2\theta$, where $\theta$ is the angle between $s_1$ and $s_2$. When search directions become nearly parallel ($\det_{\text{norm}} \le 10^{-6}$), the Gram matrix is ill-conditioned and updates revert to standard uncoupled steps ($\gamma_1 = \gamma_2 = 1$).
+    \item \textbf{Step-multiplier clamp:} We restrict the multipliers to $\gamma_1, \gamma_2 \in [0.5, 3.5]$. Without this bound, the unconstrained multiplier is huge at the start, because the nominal ADAM step is tiny compared with the distance between the twins, and the iterates jump to the point where the two search rays meet, far uphill. In practice, the clamp is active in almost every iteration: in 2D the unconstrained multiplier exceeds $3.5$ in $97\%$ of steps, and in 100D it falls below $0.5$ in $91\%$ of steps. The step actually taken is therefore about $3.5$ (in 2D) or $0.5$ (in 100D) times the nominal ADAM step, not the distance-minimizing one.
+\end{enumerate}}
+
+\begin{algorithm}[H]
+\caption{Twin-Modulated ADAM Optimizer}\label{alg:adam_twin}
+\begin{algorithmic}[1]
+\Require Objective gradient $\nabla f(w)$, initial vectors $w_{01}, w_{02}$, max iterations $K$, hyperparameters $(\alpha, \beta_1, \beta_2, \varepsilon, \tau)$
+\State $w_1 \leftarrow w_{01}, \; w_2 \leftarrow w_{02}, \; m_1, m_2 \leftarrow \mathbf{0}, \; v_1, v_2 \leftarrow \mathbf{0}, \; t \leftarrow 0$
+\While{$\|\nabla f(w_1)\|_2 > \tau$ \textbf{and} $\|\nabla f(w_2)\|_2 > \tau$ \textbf{and} $t < K$}
+    \State $t \leftarrow t + 1$
+    \For{$k \in \{1, 2\}$}
+        \State $g_k \leftarrow \nabla f(w_k)$
+        \State $m_k \leftarrow \beta_1 m_k + (1 - \beta_1) g_k$, \quad $v_k \leftarrow \beta_2 v_k + (1 - \beta_2)(g_k \odot g_k)$ \Comment{Moment updates}
+        \State $\hat{m}_k \leftarrow m_k / (1 - \beta_1^t)$, \quad $\hat{v}_k \leftarrow v_k / (1 - \beta_2^t)$ \Comment{Bias correction}
+        \State $s_k \leftarrow -\alpha \cdot \hat{m}_k \oslash (\sqrt{\hat{v}_k} + \varepsilon)$ \Comment{Nominal ADAM step}
+    \EndFor
+    \State $\delta \leftarrow w_1 - w_2$, \quad $\det \leftarrow \|s_1\|_2^2 \|s_2\|_2^2 - (s_1^T s_2)^2$
+    \If{$\det / (\|s_1\|_2^2 \|s_2\|_2^2) > 10^{-6}$}
+        \State $\gamma_1 \leftarrow \frac{-(s_1^T \delta)\|s_2\|_2^2 + (s_1^T s_2)(s_2^T \delta)}{\det}$, \quad $\gamma_2 \leftarrow \frac{(s_2^T \delta)\|s_1\|_2^2 - (s_1^T s_2)(s_1^T \delta)}{\det}$
+        \State $\gamma_1 \leftarrow \min(\max(\gamma_1, 0.5), 3.5)$, \quad $\gamma_2 \leftarrow \min(\max(\gamma_2, 0.5), 3.5)$ \Comment{Step bounds}
+    \Else
+        \State $\gamma_1 \leftarrow 1.0, \quad \gamma_2 \leftarrow 1.0$ \Comment{Collinear fallback}
+    \EndIf
+    \State $w_1 \leftarrow w_1 + \gamma_1 s_1$, \quad $w_2 \leftarrow w_2 + \gamma_2 s_2$ \Comment{State update}
+    \State $\text{history.w1}(:,t) \leftarrow w_1$, \quad $\text{history.w2}(:,t) \leftarrow w_2$
+\EndWhile
+\State \Return $w^* = \arg\min_{w \in \{w_1, w_2\}} \|\nabla f(w)\|_2$, $\text{history}$
+\end{algorithmic}
+\end{algorithm}
+
+\added{\paragraph{Convergence Dynamics on 2D and 100D Benchmarks:}
+\begin{itemize}
+    \item \textbf{2D Rosenbrock Benchmark:} Twin~1 starts at $(-1.5, 2.0)$ and Twin~2 at $(1.5, 2.0)$ (Figure~\ref{fig:twin_2d}(a)). Both enter the curved valley and come within $\|w_1 - w_2\|_2 < 0.05$ at iteration $1{,}378$ near $(1, 1)$. Twin~2 reaches tolerance $\tau = 10^{-5}$ at iteration $3{,}228$ (gradient norm $9.999 \times 10^{-6}$; Twin~1 at $1.8 \times 10^{-5}$), with both twins reaching $f \le 10^{-9}$ (Figure~\ref{fig:twin_2d}(b)). Because $\gamma$ is clamped at $3.5$ for $97\%$ of steps, the effective learning rate is $\alpha_{\text{eff}} \approx 0.035$. Plain single ADAM with $\alpha = 0.035$ converges in $2{,}203$ iterations ($w_{01}$) and $2{,}160$ iterations ($w_{02}$), showing that the $22.1\%$ iteration reduction ($4{,}145 \to 3{,}228$) stems from the larger effective step size rather than coupling geometry. Due to two gradients per step, Twin ADAM required $6{,}456$ evaluations---$55.8\%$ more than single ADAM from $w_{01}$ ($4{,}145$ evals; $4{,}016$ from $w_{02}$).
+    \item \textbf{100D Extended Rosenbrock Benchmark:} The separation $\|w_1 - w_2\|_2$ drops from $35.0$ to about $1.6$ in the first $600$ iterations, then stays between about $1.5$ and $2.1$ (Figure~\ref{fig:twin_100d}(b)). Twin~1 moves toward the local minimum (first coordinate $w_{1,1} \approx -0.9933$, $f \approx 3.9866$), reaching $\|\nabla f(w_1)\|_2 = 9.90 \times 10^{-6} \le 10^{-5}$ at iteration $14{,}921$ and stopping the run. Twin~2 enters the global basin ($f = 1.24 \times 10^{-7}$), but its gradient norm is $4.40 \times 10^{-4}$, so the optimizer returns Twin~1 as $w^*$ based on smaller gradient norm. Plain ADAM from $w_{02}$ also enters the global basin ($f = 2.15 \times 10^{-3}$ at $25{,}000$ iterations), suggesting this is mainly due to the starting point $w_{02}$ rather than the twin coupling. In total, Twin ADAM used $29{,}842$ gradient evaluations and took $3\times$ longer ($0.33$~s vs.\ $0.11$~s).
+\end{itemize}}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/twin_2d_contour.png}
+        \caption{Optimization trajectories on 2D Rosenbrock}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/twin_2d_convergence.png}
+        \caption{Objective function convergence history $f(w_1), f(w_2)$}
+    \end{subfigure}
+    \caption{Twin ADAM convergence on the 2D Rosenbrock benchmark initialized from opposite sides of the valley ($w_{01} = (-1.5, 2.0)$, $w_{02} = (1.5, 2.0)$).}\label{fig:twin_2d}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/twin_100d_convergence.png}
+        \caption{Objective function convergence history ($D = 100$)}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/twin_100d_distance.png}
+        \caption{Inter-twin trajectory distance $\|w_1 - w_2\|_2$}
+    \end{subfigure}
+    \caption{Twin ADAM performance on the 100D Extended Rosenbrock benchmark, displaying mutual distance contraction into the 100-dimensional valley.}\label{fig:twin_100d}
+\end{figure}
 
 % =========================================================================
 \section{Future Research and Development Plans}

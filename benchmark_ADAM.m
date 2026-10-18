@@ -26,6 +26,10 @@ g = @(x) extended_rosenbrock_g(x);
 fprintf('Running the benchmarker.... \n ');
 w_global_min = ones(D, 1);
 
+% For Twin Gradient
+w01 = w0;
+w02 = repmat([2.0; -1.5], D/2, 1);
+
 % Registry of optimizers to benchmark.
 optimizers = {
     struct('name', 'Adam',                      'fn', @(g, w0) adam_optimizer(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance))
@@ -33,10 +37,11 @@ optimizers = {
     struct('name', 'AMSGrad',                    'fn', @(g, w0) adam_optimizer_AMSGrad(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance))
     struct('name', 'ADAM with Double Gradient',  'fn', @(g, w0) adam_optimizer_DG(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance))
     struct('name', 'ADAM with Preconditions',  'fn', @(g, w0) adam_optimizer_preconditioned(g, w0, max_iter, alpha, beta1, beta2, epsilon, tolerance))
+    struct('name', 'ADAM wit Twin Gradient',  'fn', @(g, w0) adam_optimizer_twin_gradient(g, w0, w02, max_iter, alpha, beta1, beta2, epsilon, tolerance))
 };
 
 winner.name = "";
-winner.iter = 0;
+winner.iter = inf;
 
 results = struct('Optimizer', {}, 'Iterations', {}, 'Time_s', {}, ...
                   'f_w_opt', {}, 'L2_Error', {}, 'GradNorm', {});
@@ -48,7 +53,7 @@ for k = 1:numel(optimizers)
     [w_opt, history, verbose] = opt.fn(g, w0);
     elapsed = toc;
 
-    if  verbose.iteration < max_iter
+    if  verbose.iteration < winner.iter
         winner.name = opt.name;
         winner.iter = verbose.iteration;
     end
@@ -98,3 +103,5 @@ function row = benchmark_row(name, f, g, w_global_min, w, elapsed, iterations)
     row.L2_Error   = norm(w - w_global_min);
     row.GradNorm   = norm(g(w));
 end
+
+visualize_twin_100d(f, g, history, w01, w02);

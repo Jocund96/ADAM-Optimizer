@@ -13,7 +13,7 @@ A comprehensive MATLAB framework evaluating the performance of the ADAM optimiza
 
 ## 👥 Contributors
 
-*   **Jasurbek Odilov** ([@Jacund96](https://github.com)) — Project Maintainer
+*   **Jasurbek Odilov** ([@Jocund96](https://github.com/Jocund96)) — Project Maintainer
 *   **Usama Renders** ([@usama-469](https://github.com/usama-469)) — Core Collaborator (ANN Implementation Support)
 
 ## 📂 Repository Structure
