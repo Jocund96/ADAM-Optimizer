@@ -7,25 +7,22 @@ function [results, losses] = ADAM_ANN(x, Y, config)
 
 %% ===== Split the data into sets
 % ---- Used a standard 70/15/15 split
-[iTr, iVa, iTe] = split_data(numel(x), 0.70, 0.15);   % rest (15%) = test
+N = size(x, 2);
+[iTr, iVa, iTe] = split_data(N, 0.70, 0.15);
 
-xTr = x(iTr);  YTr = Y(iTr);
-xVa = x(iVa);  YVa = Y(iVa);
-xTe = x(iTe);  YTe = Y(iTe);
+xTr = x(:, iTr);  YTr = Y(:, iTr);
+xVa = x(:, iVa);  YVa = Y(:, iVa);
+xTe = x(:, iTe);  YTe = Y(:, iTe);
 
-% Scale x to [-1, 1] using the Training data only
-% then apply the very same scaling to validation and test data.
-xMin = min(xTr);  xMax = max(xTr);
+xMin = min(xTr, [], 2);  xMax = max(xTr, [], 2);     % per input row
 XTr = Scale(xTr, xMin, xMax);
 XVa = Scale(xVa, xMin, xMax);
 XTe = Scale(xTe, xMin, xMax);
 
-% Standardize Y (zero mean, unit std) using the training data only.
-% Without this, functions with large values (e.g. x.^2) do not train.
-yMu = mean(YTr);  ySd = std(YTr);
-YTrS = (YTr - yMu) / ySd;
-YVaS = (YVa - yMu) / ySd;
-YTeS = (YTe - yMu) / ySd;
+yMu = mean(YTr, 2);  ySd = std(YTr, 0, 2);           % per output row
+YTrS = (YTr - yMu) ./ ySd;
+YVaS = (YVa - yMu) ./ ySd;
+YTeS = (YTe - yMu) ./ ySd;
 
 fprintf("Data set segrated with %u training, %u validation and %u testing samples\n", numel(XTr),numel(XVa),numel(XTe));
 
@@ -159,62 +156,35 @@ end
 
 %% Vorwärtspropagation
 function [A, cache] = forward_propagate(X, params, activation)
-W1 = params.W1; b1 = params.b1;
-W2 = params.W2; b2 = params.b2;
-
-Z1 = W1 * X + b1;
-%A1 = tanh(Z1); % tanh
-A1 = activate(Z1, activation);
-
-Z2 = W2 * A1 + b2;
-A = Z2; % lineare Ausgabe
-
-cache = struct('X',X,'Z1',Z1,'A1',A1,'A',A);
+L = numel(fieldnames(params)) / 2;          % number of weight layers
+cache.A = cell(L+1, 1);                     % A{1} = input, A{L+1} = output
+cache.Z = cell(L, 1);
+cache.A{1} = X;
+for i = 1:L
+    W = params.(sprintf('W%d',i));
+    b = params.(sprintf('b%d',i));
+    cache.Z{i} = W * cache.A{i} + b;
+    if i < L
+        cache.A{i+1} = activate(cache.Z{i}, activation);   % hidden layer
+    else
+        cache.A{i+1} = cache.Z{i};                          % linear output
+    end
+end
+A = cache.A{L+1};
 end
 
 %% Rückwärtspropagation
 function grads = back_propagate(X, Y, params, cache, activation)
-
-W2 = params.W2;
-
-A1 = cache.A1;
-Z1 = cache.Z1;
-A  = cache.A;
-
-%dZ2 = 2*(A - Y) / m;
-dZ2 = 2*(A - Y) / numel(Y);
-grads.W2 = dZ2 * A1';
-grads.b2 = sum(dZ2,2);
-
-dA1 = W2' * dZ2;
-%dZ1 = dA1 .* (1 - A1.^2); % tanh Ableitung
-dZ1 = dA1 .* activate_derivative(Z1, A1, activation);
-
-grads.W1 = dZ1 * X';
-grads.b1 = sum(dZ1,2);
+L = numel(fieldnames(params)) / 2;
+dZ = 2*(cache.A{L+1} - Y) / numel(Y);       % adjoint at the output
+for i = L:-1:1
+    grads.(sprintf('W%d',i)) = dZ * cache.A{i}';
+    grads.(sprintf('b%d',i)) = sum(dZ, 2);
+    if i > 1                                % pass the adjoint one layer back
+        dA = params.(sprintf('W%d',i))' * dZ;
+        dZ = dA .* activate_derivative(cache.Z{i-1}, cache.A{i}, activation);
+    end
 end
-
-%% ADAM Update
-function [params, m, v] = adam_update(params, grads, m, v, t, lr, beta1, beta2, eps)
-fields = fieldnames(params);
-
-for i = 1:length(fields)
-    key = fields{i};
-
-    % 1. Moment (Mean)
-    m.(key) = beta1 * m.(key) + (1 - beta1) * grads.(key);
-
-    % 2. Moment (Varianz)
-    v.(key) = beta2 * v.(key) + (1 - beta2) * (grads.(key).^2);
-
-    % Bias-Korrektur
-    m_hat = m.(key) / (1 - beta1^t);
-    v_hat = v.(key) / (1 - beta2^t);
-
-    % Update
-    params.(key) = params.(key) - lr * m_hat ./ (sqrt(v_hat) + eps);
-end
-
 end
 
 function [scale] = Scale(x, xMin, xMax)
