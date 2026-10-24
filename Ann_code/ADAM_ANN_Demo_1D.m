@@ -9,17 +9,20 @@ x = 1:1:200;
 f = @(x) sin(0.2*x);
 Y = f(x) + 0.05*randn(1,200);
 
-%% ==== Hyper-Parameters
-layers = [1, 40, 1];  %[input_dim, hidden_dim, output_dim]
-num_epochs = 20000;
-learning_rate = 0.01;
-activation = 'relu'; %tanh, relu
+%% The configuration for the ANN
+config = []; % struct that carries the configuration for the ANN
+
+config.layers = [1, 40, 1];  %[input_dim, hidden_dim, output_dim]
+config.num_epochs = 20000;
+config.hp.learning_rate = 0.01;
+config.activation = 'tanh'; %tanh, relu, sigmoid, leakyrelu, elu, softplus, swish, linear
+config.optimizer = @adam_optimizer_W_step;
 
 %% Call the function to train the ANN
-[results, losses] = ADAM_ANN(x, Y, layers, num_epochs, activation, learning_rate);
+[results, losses] = ADAM_ANN(x, Y, config);
 
 %% === The Plots for data visualization
-Visualize_1D(x,Y, layers ,activation, results, losses);
+Visualize_1D(x,Y, config.layers ,config.activation, results, losses);
 
 
 %% The plotting function

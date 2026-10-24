@@ -16,3 +16,6 @@ average problem plots/
 extracted_images/
 brag-output/
 adam code base/
+
+# HTML files (explainers, generated pages)
+*.html
