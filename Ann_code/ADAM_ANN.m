@@ -46,14 +46,21 @@ xFine = linspace(min(x), max(x), 1000);
 yFine = forward_propagate(Scale(xFine, xMin, xMax), params, config.activation) * ySd + yMu;
 
 %% === Return the data
+
+% Predict at any new inputs (original units), e.g. results.predict(xNew)
+results.predict = @(xNew) forward_propagate(Scale(xNew, xMin, xMax), params, config.activation) .* ySd + yMu;
+
 results.params = params;
 results.xFine = xFine;
 results.yFine = yFine;
 results.time         = time;                % cumulative seconds, per epoch
+results.layers = config.layers;    
+results.num_epochs = config.num_epochs;
 
 losses.trainLoss    = trainLoss;            % scaled
 losses.valLoss      = valLoss;              % scaled
-losses.testLoss     = mean_testLoss;        % scaled
+losses.meanTestLoss     = mean_testLoss;        % scaled for test losss
+losses.meanTrainLoss     = mean_trainLoss;        % scaled for train loss
 losses.testLossOrig = mean_testLoss_orig;   % original units
 
 end
@@ -188,7 +195,7 @@ end
 end
 
 function [scale] = Scale(x, xMin, xMax)
-scale = 2*(x - xMin)/(xMax - xMin) - 1;
+scale = 2*(x - xMin)./(xMax - xMin) - 1;
 end
 
 
