@@ -51,11 +51,10 @@ YhatTest_lr = predict(mdl_tr, x_test_tran);
 
 r2Train_lr = calcR2(Y_tr_tran, YhatTrain_lr);
 r2Test_lr  = calcR2(Y_test_tran, YhatTest_lr);
-fprintf('R2 Train: %.4f, R2 Test %.4f \n', r2Train_lr, r2Test_lr);
+fprintf('Linear Regression R2 Train: %.4f, R2 Test %.4f \n', r2Train_lr, r2Test_lr);
 
 %% Print results
-fprintf('R2 Train %.4f \n', r2Train);
-fprintf('R2 Test %.4f \n', r2Test);
+fprintf('ADAM R2 Train: %.4f, R2 Test %.4f \n', r2Train, r2Test);
 fprintf('Best Validation %.4f \n', bestVal);
 fprintf('Best Epoch %.4f \n', bestEpoch);
 
