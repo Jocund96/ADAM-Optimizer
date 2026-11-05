@@ -12,7 +12,7 @@ Y = rosenbrock_2d(x);    % 1 x 1000 target values
 
 %% Configure ANN 
 config.layers = [2, 32, 1];
-config.num_epochs = 20000;
+config.num_epochs = 4000;
 config.hp.learning_rate = 0.01;
 config.activation = 'tanh';
 config.optimizer = @adam_optimizer_step;

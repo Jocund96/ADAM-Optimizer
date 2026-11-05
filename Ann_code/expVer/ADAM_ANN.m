@@ -97,20 +97,31 @@ time      = nan(config.num_epochs,1);
 t0 = tic;
 fprintf('=== ANN training STARTED ===\n');
 
+B = 16;                                   % batch size
+t = 0;                                    % Adam update counter
+N = size(XTr, 2);                         % number of training points
+
 for epoch = 1:config.num_epochs
 
-    % Vorwärtspropagation
-    [A, cache] = forward_propagate(XTr, params, config.activation);
+    idx = randperm(N); %shuffle the batch
 
-    % Verlust (MSE)
-    trainLoss(epoch) = mean((A - YTr).^2);
+    for k = 1:B:N
 
-    % Rückwärtspropagation
-    grads = back_propagate(XTr, YTr, params, cache, config.activation);
+        b = idx(k : min(k+B-1, N));       % indices in this batch
 
-    % ADAM Update
-    %[params, m, v] = adam_update(params, grads, m, v, epoch, learning_rate, beta1, beta2, eps);
-    [params, state] = config.optimizer(params, grads, state, epoch, hp);
+        % Vorwärtspropagation
+        [A, cache] = forward_propagate(XTr(:,b), params, config.activation);
+    
+        % Rückwärtspropagation
+        grads = back_propagate(YTr(:,b), params, cache, config.activation);
+    
+        % ADAM Update
+        t = t + 1;
+        [params, state] = config.optimizer(params, grads, state, t, hp);
+    end
+
+    % after a full pass: measure losses on ALL train / validation points
+    trainLoss(epoch) = mean((forward_propagate(XTr, params, config.activation) - YTr).^2, 'all');
 
     % check the validation loss without any training on it
     valLoss(epoch) = mean((forward_propagate(XVa, params, config.activation) - YVa).^2);
@@ -187,7 +198,7 @@ A = cache.A{L+1};
 end
 
 %% Rückwärtspropagation
-function grads = back_propagate(X, Y, params, cache, activation)
+function grads = back_propagate(Y, params, cache, activation)
 L = numel(fieldnames(params)) / 2;
 dZ = 2*(cache.A{L+1} - Y) / numel(Y);       % adjoint at the output
 for i = L:-1:1
