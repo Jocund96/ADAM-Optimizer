@@ -12,10 +12,11 @@ Y = f(x) + 0.05*randn(1,200);
 %% The configuration for the ANN
 config = []; % struct that carries the configuration for the ANN
 
-config.layers = [1, 20, 1];  %[input_dim, hidden_dim, output_dim]
-config.num_epochs = 20000;
+config.layers = [1, 40, 40, 1];  %[input_dim, hidden_dim, output_dim]
+config.num_epochs = 2000;
 config.hp.learning_rate = 0.01;
 config.activation = 'tanh'; %tanh, relu, sigmoid, leakyrelu, elu, softplus, swish, linear
+config.hp.batch_size = 'N'; % an number for mini batch, 1 for pure SGD and N for BGD
 config.optimizer = @adam_optimizer_step;
 
 %% Call the function to train the ANN

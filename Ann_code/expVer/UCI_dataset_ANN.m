@@ -4,7 +4,7 @@ rng(1); % change the seed to check that results hold across runs
 
 %% Import UCI Data
 data = rmmissing(readmatrix("Concrete_Data.xls"));
-size(data)
+size(data);
 
 x = transpose(data(:,1:8));
 Y = transpose(data(:, 9));
@@ -24,6 +24,7 @@ config.layers = [size(x, 1), 16, 1];  %[input_dim, hidden_dim, output_dim]
 config.num_epochs = 10000;
 config.hp.learning_rate = 0.001;
 config.activation = 'tanh'; %tanh, relu, sigmoid, leakyrelu, elu, softplus, swish, linear
+config.hp.batch_size = 1; % an number for mini batch, 1 for pure SGD and N for BGD
 config.optimizer = @adam_optimizer_step;
 
 

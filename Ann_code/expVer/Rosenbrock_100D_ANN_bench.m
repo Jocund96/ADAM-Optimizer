@@ -44,6 +44,7 @@ for k = 1:length(optimizers)
     config.hp.learning_rate = 0.002;
     config.activation = 'leakyrelu';    
     config.optimizer = optimizers{k};
+    config.hp.batch_size = 1; % an number for mini batch, 1 for pure SGD and N for BGD
     
     fprintf('\n Running %s on 100D Rosenbrock\n', opt_names{k});
     % Measure training time

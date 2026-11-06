@@ -19,6 +19,7 @@ config.layers = [1, 20, 1];  %[input_dim, hidden_dim, output_dim]
 config.num_epochs = 20000;
 config.hp.learning_rate = 0.01;
 config.activation = 'tanh'; %tanh, relu, sigmoid, leakyrelu, elu, softplus, swish, linear
+config.hp.batch_size = 'N'; % an number for mini batch, 1 for pure SGD and N for BGD
 config.optimizer = @adam_optimizer_step;
 
 
@@ -27,9 +28,8 @@ fprintf('Running the benchmarker.... \n ');
 
 % Registry of optimizers to benchmark.
 ann_runners = {
-    struct('name', 'Adam [1 20 1]',    'fn', @(x, Y, config) ADAM_ANN(x, Y, config))
-    struct('name', 'Adam [1 40 1]',    'fn', @(x, Y, config) ADAM_ANN(x, Y, setfield(config, 'layers', [1 40 1])))
-    struct('name', 'Adam [1 20 20 1]', 'fn', @(x, Y, config) ADAM_ANN(x, Y, setfield(config, 'layers', [1 20 20 1])))
+    struct('name', 'Adam',    'fn', @(x, Y, config) ADAM_ANN(x, Y, config))
+    struct('name', 'Adam Twin', 'fn', @(x, Y, config) ADAM_ANN_twin(x, Y, config))
     };
 
 

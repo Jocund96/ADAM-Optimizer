@@ -97,9 +97,14 @@ time      = nan(config.num_epochs,1);
 t0 = tic;
 fprintf('=== ANN training STARTED ===\n');
 
-B = 16;                                   % batch size
 t = 0;                                    % Adam update counter
 N = size(XTr, 2);                         % number of training points
+
+if isequal(config.hp.batch_size, 'N') % if no batch size given, we use batch gradient descent
+    B = N;                                   % batch size
+else
+    B = config.hp.batch_size;
+end
 
 for epoch = 1:config.num_epochs
 

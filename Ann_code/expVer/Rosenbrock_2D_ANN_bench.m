@@ -15,6 +15,7 @@ config.layers = [2, 32, 1];
 config.num_epochs = 4000;
 config.hp.learning_rate = 0.01;
 config.activation = 'tanh';
+config.hp.batch_size = 1; % an number for mini batch, 1 for pure SGD and N for BGD
 config.optimizer = @adam_optimizer_step;
 
 %% Train ANN
