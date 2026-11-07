@@ -629,7 +629,238 @@ Two safeguards stabilize the coupling without an objective line search:
 \end{figure}
 
 
+%===================================================
 
+\section{High-Dimensional Application: ANN Training}
+\label{sec:ann}
+
+\FloatBarrier
+\subsection{Motivation}
+\label{sec:ann:motivation}
+The benchmarks in Sections 3 to 5 have at most 100 variables and a known minimum. Practical problems usually have far more unknowns, so in this section the ADAM variants are used to train an artificial neural network (ANN). The network for the 100-dimensional problem, with layers $[100, 128, 64, 1]$, already has $P = \sum_{l} n_l(n_{l-1}+1) = 21\,249$ parameters. Their gradient is obtained with the adjoint method at about the cost of one forward pass, while central finite differences would need $2P = 42\,498$ loss evaluations. Since the loss of a network has no known minimizer, performance is measured by the prediction error on unseen data instead of the distance to $w^*$.
+
+\FloatBarrier
+\subsection{Network and Adjoint Gradient}
+\label{sec:ann:adjoint}
+For layers $l=1,\dots,L$ with weights $\bm{W}^{(l)}$ and biases $\bm{b}^{(l)}$, and samples stored column-wise in $\bm{A}^{(0)}=\bm{X}$, the forward pass and the loss are
+\begin{equation}
+  \bm{Z}^{(l)} = \bm{W}^{(l)}\bm{A}^{(l-1)} + \bm{b}^{(l)}, \qquad
+  \bm{A}^{(l)} = \sigma\big(\bm{Z}^{(l)}\big), \qquad
+  J = \frac{1}{n_L N_b}\big\| \bm{A}^{(L)} - \tilde{\bm{Y}} \big\|_F^2 ,
+\end{equation}
+with $\sigma=\tanh$ in the hidden layers, a linear output layer and standardized targets $\tilde{\bm{Y}}$. The gradient is computed by reverse-mode differentiation, known as backpropagation \cite{rumelhart1986learning} or the discrete adjoint method \cite{baydin2018automatic}. The adjoint $\bm{\Delta}^{(l)} = \partial J/\partial \bm{Z}^{(l)}$ is passed backwards from the output (Figure~\ref{fig:ann:schematic}):
+\begin{equation}
+  \bm{\Delta}^{(L)} = \frac{2}{n_L N_b}\big(\bm{A}^{(L)} - \tilde{\bm{Y}}\big), \qquad
+  \bm{\Delta}^{(l-1)} = \big(\bm{W}^{(l)\mathsf T}\bm{\Delta}^{(l)}\big)\odot\sigma'\big(\bm{Z}^{(l-1)}\big),
+\end{equation}
+\begin{equation}
+  \frac{\partial J}{\partial \bm{W}^{(l)}} = \bm{\Delta}^{(l)}\bm{A}^{(l-1)\mathsf T},
+  \qquad
+  \frac{\partial J}{\partial \bm{b}^{(l)}} = \bm{\Delta}^{(l)}\mathbf{1}.
+\end{equation}
+The gradients have the same structure as the parameters, so the optimizer step functions of the previous sections are used without changes.
+
+\begin{figure}[!htbp]
+  \centering
+   \includegraphics[width=0.75\textwidth]{figures/ANN/ann_schematic.pdf}
+  \caption{Fully connected network with forward pass (left to right) and adjoint pass (right to left).}
+  \label{fig:ann:schematic}
+\end{figure}
+
+\paragraph{Gradient check.}
+The adjoint gradient was compared with central finite differences, $g_j^{\mathrm{FD}} = [J(\bm{\theta}+h\bm{e}_j) - J(\bm{\theta}-h\bm{e}_j)]/2h$ with $h=10^{-6}$, for every weight and bias of a small network. The relative error $|g_j^{\mathrm{FD}} - g_j^{\mathrm{adj}}| / \max(1,|g_j^{\mathrm{FD}}|)$ stayed below $2.5\times10^{-9}$ for all parameter arrays (Table~\ref{tab:ann:gradcheck}).
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Gradient check: maximum relative error between adjoint and central finite-difference gradients (layers $[1,5,4,1]$, $\tanh$, $h=10^{-6}$).}
+  \label{tab:ann:gradcheck}
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Parameter array} & \textbf{Size} & \textbf{Max. relative error $e$} & \textbf{Passed ($e<10^{-5}$)} \\
+    \midrule
+    $\bm{W}^{(1)}$ & $5\times1$ & 1.27 $\times10^{-9}$ & yes \\
+    $\bm{b}^{(1)}$ & $5\times1$ & 2.44 $\times10^{-9}$ & yes \\
+    $\bm{W}^{(2)}$ & $4\times5$ & 1.94 $\times10^{-9}$ & yes \\
+    $\bm{b}^{(2)}$ & $4\times1$ & 1.25 $\times10^{-9}$ & yes \\
+    $\bm{W}^{(3)}$ & $1\times4$ & 3.07 $\times10^{-10}$ & yes \\
+    $\bm{b}^{(3)}$ & $1\times1$ & 3.03 $\times10^{-11}$ & yes \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\FloatBarrier
+\subsection{Training Setup}
+\label{sec:ann:data}
+The data are split randomly into 70\% training, 15\% validation and 15\% test samples. Inputs are scaled to $[-1,1]$ and outputs standardized with training statistics, so a scaled MSE of 1 equals predicting the mean. The batch size $B$ selects full-batch training ($B=N_{\mathrm{tr}}$), mini-batch training ($1<B<N_{\mathrm{tr}}$) or SGD ($B=1$); all results below use full batch. The weights with the lowest validation loss are kept and evaluated once on the test set (Algorithm~\ref{alg:ann}).
+
+ADAM, AdamW \cite{loshchilov2017decoupled}, AMSGrad \cite{reddi2018convergence} and Twin ADAM use the same training code; only the step function is exchanged. All runs use the same seed, so data, split and initial weights are identical, and the same hyperparameters (Table~\ref{tab:ann:setup}). The optimizers are compared by the test MSE (main criterion), the training and best validation MSE, the generalisation ratio $G = J_{\mathrm{te}}/J_{\mathrm{tr}}$ ($G\gg1$ indicates overfitting) and the wall-clock time. The computational cost of $E$ epochs is approximately
+\begin{equation}
+  C \approx 6\,P\,k\,E\,N_{\mathrm{tr}},
+\end{equation}
+since a forward and an adjoint pass need about $2P$ and $4P$ operations per sample, with $k=1$ for ADAM, AdamW and AMSGrad and $k=2$ for Twin ADAM.
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Test problems and common settings.}
+  \label{tab:ann:setup}
+  \begin{tabular}{lp{0.72\textwidth}}
+    \toprule
+    \textbf{Test problems} & $\sin(0.2x)$ with noise (1D); Rosenbrock fit with $D = 2$ and $100$ inputs; Concrete Compressive Strength data set (UCI) \\
+    \textbf{Network (100D)} & $[100, 128, 64, 1]$, $P = 21\,249$, $N = 100\,000$ samples in $[-2,2]^{100}$ \\
+    \textbf{Activation} & $\tanh$ (hidden), linear (output) \\
+    \textbf{Hyperparameters} & $\alpha = 0.01$, $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\varepsilon = 10^{-8}$, AdamW $\lambda = 0.1$ \\
+    \textbf{Batch size} & full batch ($B = N_{\mathrm{tr}}$) \\
+    \textbf{Seed} & 1, reset before every run \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{algorithm}[!htbp]
+\caption{ANN training with an exchangeable ADAM-type optimizer (\texttt{ADAM\_ANN.m})}
+\label{alg:ann}
+\begin{algorithmic}[1]
+\Require Data $(\bm{X},\bm{Y})$, layer widths, activation $\sigma$, epochs $E$, batch size $B$, step function \texttt{opt}, hyperparameters $(\alpha,\beta_1,\beta_2,\varepsilon)$
+\State Split data 70/15/15; scale inputs to $[-1,1]$, standardize outputs (training statistics)
+\State Initialise $\bm{\theta}$; optimizer state $\leftarrow\emptyset$; $t\leftarrow0$; $J^{\mathrm{best}}_{\mathrm{va}}\leftarrow\infty$
+\For{$e = 1,\dots,E$}
+  \State Shuffle the training samples
+  \For{each batch $\mathcal{B}$ of size $B$}
+    \State $\bm{A}^{(L)} \leftarrow$ forward pass on $\mathcal{B}$ \Comment{store $\bm{Z}^{(l)},\bm{A}^{(l)}$}
+    \State $\nabla_{\bm{\theta}} J \leftarrow$ adjoint pass on $\mathcal{B}$ \Comment{Section~\ref{sec:ann:adjoint}}
+    \State $t\leftarrow t+1$
+    \State $[\bm{\theta},\text{state}] \leftarrow \texttt{opt}(\bm{\theta},\nabla_{\bm{\theta}}J,\text{state},t,\text{hp})$ \Comment{ADAM, AdamW, AMSGrad}
+  \EndFor
+  \State Evaluate $J_{\mathrm{tr}}$ and $J_{\mathrm{va}}$ on the complete sets
+  \If{$J_{\mathrm{va}} < J^{\mathrm{best}}_{\mathrm{va}}$}
+    \State $J^{\mathrm{best}}_{\mathrm{va}}\leftarrow J_{\mathrm{va}}$; \ $\bm{\theta}^{\mathrm{best}}\leftarrow\bm{\theta}$
+  \EndIf
+\EndFor
+\State Evaluate $J_{\mathrm{te}}$ with $\bm{\theta}^{\mathrm{best}}$
+\State \Return $\bm{\theta}^{\mathrm{best}}$, loss histories, $J_{\mathrm{te}}$
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Twin ADAM.}
+The twin-gradient method of Section 6.4 \cite{demagistris2026twin} is applied to two independently initialised networks $\bm{\theta}_1,\bm{\theta}_2$ trained on the same batches. Their ADAM steps $\bm{s}_1,\bm{s}_2$ are scaled by
+\begin{equation}
+  \min_{\gamma_1,\gamma_2}\ \big\| (\bm{\theta}_1 + \gamma_1\bm{s}_1) - (\bm{\theta}_2 + \gamma_2\bm{s}_2) \big\|_2^2 ,
+  \qquad \gamma_{1,2}\in[0.5,\,3.5],
+\end{equation}
+with $\gamma_1=\gamma_2=1$ if the steps are nearly parallel. After each epoch the network with the lower validation loss is kept. Each update needs two gradient evaluations.
+
+\FloatBarrier
+\subsection{Results}
+\label{sec:ann:results}
+Table~\ref{tab:ann:results} summarises all ANN benchmarks.
+
+\begin{table}[!htbp]
+  \centering
+  \caption{ANN benchmark results (scaled MSE, seed 1, settings of Table~\ref{tab:ann:setup}).}
+  \label{tab:ann:results}
+  \small
+  \begin{tabular}{lccccc}
+    \toprule
+    \textbf{Optimizer} & \textbf{Train MSE} & \textbf{Best val.\ MSE} & \textbf{Test MSE} & \textbf{$G$} & \textbf{Time [s]}  \\
+    \midrule
+    \multicolumn{6}{l}{\textit{1D: $\sin(0.2x)$ with noise}} \\
+    ADAM      & $4.67\times10^{-3}$ & $1.32\times10^{-2}$ & $1.20\times10^{-2}$ & $2.56$ & $2.99$ \\
+    AdamW     & $1.64\times10^{-1}$ & $1.15\times10^{-1}$ & $1.18\times10^{-1}$ & $0.72$ & $3.80$ \\
+    AMSGrad   & $2.34\times10^{-1}$ & $3.24\times10^{-1}$ & $3.19\times10^{-1}$ & $1.37$ & $3.91$ \\
+    Twin ADAM & $9.42\times10^{-3}$ & $1.36\times10^{-2}$ & $1.30\times10^{-2}$ & $1.38$ & $6.99$ \\
+    \midrule
+    \multicolumn{6}{l}{\textit{Rosenbrock 2D}} \\
+    ADAM      & 5.16 $\times10^{-5}$ & 1.48 $\times10^{-4}$ & 4.70 $\times10^{-5}$ & 0.91 & 1.99  \\
+    AdamW     & 2.21 $\times10^{-3}$ & 5.04 $\times10^{-3}$ & 2.54 $\times10^{-3}$ & 1.14 & 1.98  \\
+    AMSGrad   & 1.02 $\times10^{-4}$ & 3.07 $\times10^{-4}$ & 9.36 $\times10^{-5}$ & 0.92 & 1.95 \\
+    Twin ADAM & 8.31 $\times10^{-5}$ & 2.50 $\times10^{-4}$ & 8.39 $\times10^{-5}$ & 1.0 & 3.2  \\
+    \midrule
+    \multicolumn{6}{l}{\textit{Rosenbrock 100D}} \\
+    ADAM      & 2.01 $\times10^{-1}$ & 5.44 $\times10^{-1}$ & 5.44 $\times10^{-1}$ & 2.70 & 493.18  \\
+    AdamW     & 2.95 $\times10^{-1}$ & 6.27 $\times10^{-1}$ & 6.44 $\times10^{-1}$ & 2.18 & 531.00  \\
+    AMSGrad   & 1.94 $\times10^{-1}$ & 5.26 $\times10^{-1}$ & 5.23 $\times10^{-1}$ & 2.69 & 573.19 \\
+    Twin ADAM & 5.21 $\times10^{-1}$ & 7.12 $\times10^{-1}$ & 7.25 $\times10^{-1}$ & 1.39 & 950.16 \\
+    \midrule
+    \multicolumn{6}{l}{\textit{Real-world data set: Concrete dataset}} \\
+    ADAM      & 4.68 $\times10^{-2}$ & 9.23 $\times10^{-2}$ & 1.15 $\times10^{-1}$ & 2.46  & 3.37  \\
+    AdamW     & 4.20 $\times10^{-2}$ & 7.61 $\times10^{-2}$ & 1.13 $\times10^{-1}$ & 2.71  & 3.34\\
+    AMSGrad   & 8.51 $\times10^{-2}$ & 1.05 $\times10^{-1}$ & 1.42 $\times10^{-1}$ & 1.67 & 3.56   \\
+    Twin ADAM & 4.83 $\times10^{-2}$ & 7.48 $\times10^{-2}$ & 1.53 $\times10^{-1}$ & 3.17 & 6.04  \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Low-dimensional fits.}
+The 1D and 2D cases check the complete pipeline: the prediction follows $\sin(0.2x)$ (Figure~\ref{fig:ann:lowdim}) and reproduces the curved valley of the 2D Rosenbrock function (Figure~\ref{fig:ann:rosen2d}). ADAM gives the lowest test MSE in both cases. The test MSE of AdamW is about 10 times (1D) and 54 times (2D) higher, and that of AMSGrad about 27 times higher in 1D.
+
+\begin{figure}[!htbp]
+  \centering
+  \begin{subfigure}[t]{0.62\textwidth}
+    \centering
+   \includegraphics[width=\textwidth]{figures/ANN/1d_curve_fitting}
+  \end{subfigure}
+  \caption{ANN approximation of $\sin(0.2x)$ with noise (ADAM, settings of Table~\ref{tab:ann:setup}).}
+  \label{fig:ann:lowdim}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \centering
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+   \includegraphics[width=\textwidth]{figures/ANN/2d_real_function.png}
+    \caption{Original Function}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+   \includegraphics[width=\textwidth]{figures/ANN/2d_ANN_pred.png}
+    \caption{ANN prediction}
+  \end{subfigure}
+  \caption{ANN approximation of the 2D Rosenbrock function (ADAM, settings of Table~\ref{tab:ann:setup}).}
+  \label{fig:ann:rosen2d}
+\end{figure}
+
+\paragraph{100-dimensional Rosenbrock.}
+Twin ADAM has the lowest validation loss between about epoch 100 and 250 but then stagnates at about 0.71 (Figure~\ref{fig:ann:conv100}). ADAM, AdamW and AMSGrad show repeated spikes after about epoch 300, largest for AdamW. AMSGrad reaches the lowest test MSE ($5.23\times10^{-1}$), followed by ADAM ($5.44\times10^{-1}$). With $G$ between 1.39 and 2.70, all optimizers overfit to some degree despite $N = 100\,000$ samples.
+
+\begin{figure}[!htbp]
+  \centering
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+   \includegraphics[width=\textwidth]{figures/ANN/100d_val_MSE.png}
+    \caption{Validation loss}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+   \includegraphics[width=\textwidth]{figures/ANN/100d_train_MSE.png}
+    \caption{Training loss}
+  \end{subfigure}
+  \caption{Convergence of ADAM, AdamW, AMSGrad and Twin ADAM for the 100-dimensional Rosenbrock regression.}
+  \label{fig:ann:conv100}
+\end{figure}
+
+\paragraph{Concrete data set.}
+The Concrete Compressive Strength data set \cite{yeh1998concrete} contains 1030 laboratory tests with 8 inputs (seven mixture components in kg/m$^3$ and the age in days) and the compressive strength in MPa as output. AdamW reaches the lowest test MSE. The validation loss of ADAM and AMSGrad rises again after about 6500 and 7000 epochs, which shows the onset of overfitting (Figure~\ref{fig:ann:real}).
+
+\begin{figure}[!htbp]
+  \centering
+   \includegraphics[width=0.42\textwidth]{figures/ANN/concrete_val_epoch_comp.png}
+  \caption{Validation loss of ADAM, AdamW, AMSGrad and Twin ADAM over the epochs for the Concrete Compressive Strength data set.}
+  \label{fig:ann:real}
+\end{figure}
+
+\paragraph{Twin ADAM.}
+Twin ADAM did not reach a lower validation loss than ADAM on the 1D, 2D and 100D problems. On the Concrete data its validation loss was lower ($7.48\times10^{-2}$ against $9.23\times10^{-2}$), but its test MSE was the highest. Its time per epoch was 1.6 to 2.3 times that of ADAM (Figure~\ref{fig:ann:twin}).
+
+\begin{figure}[!htbp]
+  \centering
+   \includegraphics[width=0.42\textwidth]{figures/ANN/100d_val_MSE_time.png}
+  \caption{ADAM and Twin ADAM compared at equal computing time (100-dimensional Rosenbrock regression).}
+  \label{fig:ann:twin}
+\end{figure}
+
+\FloatBarrier
+\subsection{Discussion}
+\label{sec:ann:discussion}
+The adjoint gradient agreed with finite differences to about $10^{-9}$ and made training with $21\,249$ unknowns practical. ADAM was best on the 1D and 2D fits and within about 4\% of the best elsewhere, AMSGrad was best on the 100D problem and AdamW on the Concrete data. The ranking of the direct Rosenbrock problem (Section 5.4), where AdamW was best and AMSGrad worst, therefore does not carry over to network training. Twin ADAM doubled the cost per update without improving the networks, although it can help on the single-basin problems of Section 6.4. Since all runs use one seed and the same hyperparameters, repeated runs and a learning-rate study would show how robust this ranking is.
 
 
 % =========================================================================
