@@ -14,7 +14,7 @@
 
 function [params, state] = adam_optimizer_W_step(params, grads, state, t, hp)
 
-lambda = 0; %placeholder  change later
+lambda = 0.1; %placeholder  change later
 
 fields = fieldnames(params);
 

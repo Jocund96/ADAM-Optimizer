@@ -13,6 +13,7 @@ Y = f(x) + 0.05*randn(1,200);
 config = []; % struct that carries the configuration for the ANN
 
 config.layers = [1, 40, 40, 1];  %[input_dim, hidden_dim, output_dim]
+
 config.num_epochs = 2000;
 config.hp.learning_rate = 0.01;
 config.activation = 'tanh'; %tanh, relu, sigmoid, leakyrelu, elu, softplus, swish, linear

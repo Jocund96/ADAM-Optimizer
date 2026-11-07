@@ -15,33 +15,51 @@ config.layers = [2, 32, 1];
 config.num_epochs = 4000;
 config.hp.learning_rate = 0.01;
 config.activation = 'tanh';
-config.hp.batch_size = 1; % an number for mini batch, 1 for pure SGD and N for BGD
+config.hp.batch_size = 'N'; % an number for mini batch, 1 for pure SGD and N for BGD
 config.optimizer = @adam_optimizer_step;
 
-%% Train ANN
-[results, losses] = ADAM_ANN(x, Y, config);
+%% Call Training function
+fprintf('Running the benchmarker.... \n ');
 
-%% Visualize True Surface vs. ANN Predicted Surface
-[X1, X2] = meshgrid(linspace(-2, 2, 60), linspace(-2, 2, 60));
-X_grid = [X1(:)'; X2(:)'];
+% Registry of optimizers to benchmark.
+ann_runners = {
+    struct('name', 'Adam',    'fn', @(x, Y, config) ADAM_ANN(x, Y, config))
+    struct('name', 'AdamW',    'fn', @(x, Y, config) ADAM_ANN(x, Y, setfield(config, 'optimizer', @adam_optimizer_W_step)))
+    struct('name', 'Adam AMSGrad',    'fn', @(x, Y, config) ADAM_ANN(x, Y, setfield(config, 'optimizer', @adam_optimizer_AMSGrad_step)))
+    struct('name', 'Adam Twin', 'fn', @(x, Y, config) ADAM_ANN_twin(x, Y, config))
+    };
 
-Y_true_grid = reshape(rosenbrock_2d(X_grid), size(X1));
-Y_pred_grid = reshape(results.predict(X_grid), size(X1));
 
-figure('Position', [100, 100, 1100, 450]);
-subplot(1, 2, 1);
-surf(X1, X2, Y_true_grid, 'EdgeColor', 'none');
-title('True 2D Rosenbrock Surface');
-xlabel('x_1'); ylabel('x_2'); zlabel('f(x_1, x_2)'); view(-35, 30); colorbar;
+bench_results = struct('ANN_Runner', {}, 'Layers', {}, 'Time_total_s', {},'Time_epoch_s', {}, ...
+                  'Train_MSE', {},'Best_Val_MSE',{} , 'Test_MSE', {}, 'G', {}, 'Grad_evals',{});
 
-subplot(1, 2, 2);
-surf(X1, X2, Y_pred_grid, 'EdgeColor', 'none');
-title(sprintf('ANN Prediction (Scaled Test MSE = %.5f)', losses.meanTestLoss));
-xlabel('x_1'); ylabel('x_2'); zlabel('ANN Output'); view(-35, 30); colorbar;
+%loop through all the ANN Runners
+for k = 1:numel(ann_runners)
+    runner = ann_runners{k};
+    rng(2);  % same random numbers for all the runners
+    tic;
+    [results,losses] = runner.fn(x, Y, config);
+    elapsed = toc;
 
-figure;
-semilogy(losses.trainLoss, 'b'); hold on;
-semilogy(losses.valLoss, 'r');
-legend('Train', 'Validation'); grid on;
-xlabel('Epoch'); ylabel('Scaled MSE');
-title('2D Rosenbrock Loss Curves');
+    bench_results(k) = benchmark_row(runner.name, elapsed, results, losses);
+end
+
+fprintf('\n');
+format short e
+disp(struct2table(bench_results));
+format short
+
+
+
+% Computes one runner's summary metrics as a row for the comparison table
+function row = benchmark_row(name, elapsed, results, losses)
+row.ANN_Runner   = string(name);
+row.Layers       = mat2str(results.layers);
+row.Time_total_s = elapsed;                                   % total time taken in the training
+row.Time_epoch_s = results.time(end)/results.num_epochs;      % mean time per epoch
+row.Train_MSE    = losses.meanTrainLoss;
+row.Best_Val_MSE = min(losses.valLoss);                       % best validation MSE
+row.Test_MSE     = losses.meanTestLoss;
+row.G            = losses.meanTestLoss/losses.meanTrainLoss;  % gap ratio (abs not needed, both > 0)
+row.Grad_evals   = results.n_updates;                            % cost > the number of updates (for benchmarking Twin ADAM)
+end

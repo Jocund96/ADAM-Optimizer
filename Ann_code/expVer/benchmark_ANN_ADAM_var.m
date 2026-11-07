@@ -29,12 +29,14 @@ fprintf('Running the benchmarker.... \n ');
 % Registry of optimizers to benchmark.
 ann_runners = {
     struct('name', 'Adam',    'fn', @(x, Y, config) ADAM_ANN(x, Y, config))
+    struct('name', 'AdamW',    'fn', @(x, Y, config) ADAM_ANN(x, Y, setfield(config, 'optimizer', @adam_optimizer_W_step)))
+    struct('name', 'Adam AMSGrad',    'fn', @(x, Y, config) ADAM_ANN(x, Y, setfield(config, 'optimizer', @adam_optimizer_AMSGrad_step)))
     struct('name', 'Adam Twin', 'fn', @(x, Y, config) ADAM_ANN_twin(x, Y, config))
     };
 
 
 bench_results = struct('ANN_Runner', {}, 'Layers', {}, 'Time_total_s', {},'Time_epoch_s', {}, ...
-                  'Train_MSE', {},'Test_MSE', {}, 'gap_bw_loss', {});
+                  'Train_MSE', {},'Best_Val_MSE',{} , 'Test_MSE', {}, 'G', {}, 'Grad_evals',{});
 
 %loop through all the ANN Runners
 for k = 1:numel(ann_runners)
@@ -56,15 +58,16 @@ format short
 
 % Computes one runner's summary metrics as a row for the comparison table
 function row = benchmark_row(name, elapsed, results, losses)
-    row.ANN_Runner  = string(name);
-    row.Layers = mat2str(results.layers);
-    row.Time_total_s     = elapsed; %total time taken in the training
-    row.Time_epoch_s     = results.time(end)/results.num_epochs; % mean time per epoch
+    row.ANN_Runner   = string(name);
+    row.Layers       = mat2str(results.layers);
+    row.Time_total_s = elapsed;                                   % total time taken in the training
+    row.Time_epoch_s = results.time(end)/results.num_epochs;      % mean time per epoch
     row.Train_MSE    = losses.meanTrainLoss;
-    row.Test_MSE    = losses.meanTestLoss;
-    row.gap_bw_loss = (abs(losses.meanTestLoss/losses.meanTrainLoss));
+    row.Best_Val_MSE = min(losses.valLoss);                       % best validation MSE
+    row.Test_MSE     = losses.meanTestLoss;
+    row.G            = losses.meanTestLoss/losses.meanTrainLoss;  % gap ratio (abs not needed, both > 0)
+    row.Grad_evals   = results.n_updates;                            % cost > the number of updates (for benchmarking Twin ADAM)
 end
-
 
 %%% Notes
 % G ≈ 1: generalizes well.

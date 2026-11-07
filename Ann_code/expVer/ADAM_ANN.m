@@ -27,7 +27,7 @@ YTeS = (YTe - yMu) ./ ySd;
 fprintf("Data set segrated with %u training, %u validation and %u testing samples\n", numel(XTr),numel(XVa),numel(XTe));
 
 %% === Train (Using training and validation data)
-[params, trainLoss, time, valLoss] = train_adam(XTr, YTrS, XVa, YVaS, config);
+[params, trainLoss, time, valLoss, t] = train_adam(XTr, YTrS, XVa, YVaS, config);
 
 %% === Check the network on the test set
 % Scaled MSE: comparable across functions (1.0 = no better than predicting the mean)
@@ -63,6 +63,7 @@ results.yFine = yFine;
 results.time         = time;                % cumulative seconds, per epoch
 results.layers = config.layers;    
 results.num_epochs = config.num_epochs;
+results.n_updates = t;           % gradient evaluations = number of updates
 
 losses.trainLoss    = trainLoss;            % scaled
 losses.valLoss      = valLoss;              % scaled
@@ -75,7 +76,7 @@ end
 
 % Local Function definitions for this script
 
-function [best_params, trainLoss, time, valLoss] = train_adam(XTr, YTr, XVa, YVa, config)
+function [best_params, trainLoss, time, valLoss , t] = train_adam(XTr, YTr, XVa, YVa, config)
 
 % Initialisierung
 params = init_params(config.layers);
@@ -93,6 +94,11 @@ valLoss   = zeros(config.num_epochs,1);
 bestVal   = inf;
 best_params = params;
 time      = nan(config.num_epochs,1);
+
+% Optional: check the adjoint gradient against finite differences once
+if isfield(config, 'gradcheck') && config.gradcheck
+    gradient_check(params, XTr(:, 1:min(20, end)), YTr(:, 1:min(20, end)), config.activation);
+end
 
 t0 = tic;
 fprintf('=== ANN training STARTED ===\n');

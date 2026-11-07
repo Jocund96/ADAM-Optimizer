@@ -29,14 +29,14 @@ YTeS = (YTe - yMu) ./ ySd;
 fprintf("Data set segrated with %u training, %u validation and %u testing samples\n", numel(XTr),numel(XVa),numel(XTe));
 
 %% === Train (Using training and validation data)
-[params, trainLoss, time, valLoss] = train_twin_adam(XTr, YTrS, XVa, YVaS, config);
+[params, trainLoss, time, valLoss, t] = train_twin_adam(XTr, YTrS, XVa, YVaS, config);
 
 %% === Check the network on the test set
 % Scaled MSE: comparable across functions (1.0 = no better than predicting the mean)
 mean_testLoss  = mean((forward_propagate(XTe, params, config.activation) - YTeS).^2);
 mean_trainLoss = mean((forward_propagate(XTr, params, config.activation) - YTrS).^2);
 % MSE in the original units of Y
-yTePred = forward_propagate(XTe, params, config.activation) * ySd + yMu;
+yTePred = forward_propagate(XTe, params, config.activation) .* ySd + yMu;
 mean_testLoss_orig = mean((yTePred - YTe).^2);
 
 fprintf('\nFinal scaled MSE  train: %0.5f  val: %0.5f  test: %0.5f\n', ...
@@ -47,7 +47,7 @@ fprintf('Test MSE in original units of Y: %0.5g\n', mean_testLoss_orig);
 % Check dimensions to avoid crash
 if size(x, 1) == 1
     xFine = linspace(min(x), max(x), 1000);
-    yFine = forward_propagate(Scale(xFine, xMin, xMax), params, config.activation) * ySd + yMu;
+    yFine = forward_propagate(Scale(xFine, xMin, xMax), params, config.activation) .* ySd + yMu;
 else
     xFine = [];
     yFine = [];
@@ -65,6 +65,7 @@ results.yFine = yFine;
 results.time         = time;                % cumulative seconds, per epoch
 results.layers = config.layers;    
 results.num_epochs = config.num_epochs;
+results.n_updates = 2*t;           % gradient evaluations = number of updates > two per twin loop
 
 losses.trainLoss    = trainLoss;            % scaled
 losses.valLoss      = valLoss;              % scaled
@@ -77,7 +78,7 @@ end
 
 % Local Function definitions for this script
 
-function [best_params, trainLoss, time, valLoss] = train_twin_adam(XTr, YTr, XVa, YVa, config)
+function [best_params, trainLoss, time, valLoss, t] = train_twin_adam(XTr, YTr, XVa, YVa, config)
 
 % Initialisierung: two networks with different random weights
 params1 = init_params(config.layers);

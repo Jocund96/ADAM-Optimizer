@@ -1,0 +1,97 @@
+clc; clear; close all;
+
+%% Reproducibility
+rng(1); % change the seed to check that results hold across runs
+
+%% Generate 100D Extended Rosenbrock Data
+D = 100;      % 100 dimensions
+N = 100000;     % 100000 sample points
+x = -2 + 4 * rand(D, N); % 100 x 4000 matrix
+
+% Vectorized 100D Rosenbrock calculation across rows 1..99 and 2..100
+X_curr = x(1:end-1, :);
+X_next = x(2:end, :);
+Y = sum(100 * (X_next - X_curr.^2).^2 + (1 - X_curr).^2, 1); % 1 x 4000
+
+%% Compare Optimizers on 100D Problem
+% name, training script, optimizer step
+% (the twin script uses its own twin_adam_step, so its optimizer entry is not used)
+opt_list = {
+    'Adam',      @ADAM_ANN,      @adam_optimizer_step
+    'AdamW',     @ADAM_ANN,      @adam_optimizer_W_step
+    'AMSGrad',   @ADAM_ANN,      @adam_optimizer_AMSGrad_step
+    'Twin Adam', @ADAM_ANN_twin, @adam_optimizer_twin_step
+    };
+nOpt   = size(opt_list, 1);
+colors = lines(nOpt);                 % one color per optimizer
+
+exec_times = zeros(1, nOpt);
+min_val    = zeros(1, nOpt);          % best validation loss of each optimizer
+
+figure('Name', '100D Optimizer Comparison (Twin adam vs Adam)', 'Position', [100, 100, 1100, 450]);
+
+for k = 1:nOpt
+    rng(1); % Reset seed so every optimizer gets the exact same data split & init weights!
+    
+    config.layers = [D, 128, 64, 1]; 
+    config.num_epochs = 1000; %20000
+    config.hp.learning_rate = 0.01; %0.002
+    config.activation = 'tanh';    
+    config.optimizer = opt_list{k,3};
+    config.hp.batch_size = 'N'; % an number for mini batch, 1 for pure SGD and N for BGD
+    
+    fprintf('\n Running %s on 100D Rosenbrock\n', opt_list{k,1});
+    % Measure training time
+    tic;
+
+    train_fn = opt_list{k,2};                 % ADAM_ANN or ADAM_ANN_twin
+    [results, losses] = train_fn(x, Y, config);
+
+    exec_times(k) = toc;
+    min_val(k)    = min(losses.valLoss);
+
+    bench_results(k) = benchmark_row(runner.name, elapsed, results, losses);
+
+    % Validation Loss Plot
+    subplot(1, 2, 1); hold on; grid on;
+    semilogy(losses.valLoss, 'Color', colors(k,:), 'LineWidth', 1.5, ...
+        'DisplayName', sprintf('%s (Min: %.4e)', opt_list{k,1}, min(losses.valLoss)));
+    
+    % Train Loss Plot
+    subplot(1, 2, 2); hold on; grid on;
+    semilogy(losses.trainLoss, 'Color', colors(k,:), 'LineWidth', 1.5, ...
+        'DisplayName', sprintf('%s (Min: %.4e)', opt_list{k,1}, min(losses.trainLoss)));
+end
+
+% Formatting Subplot 1 (Validation)
+subplot(1, 2, 1);
+set(gca, 'YScale', 'log', 'FontSize', 11);
+xlabel('Epoch'); ylabel('Validation MSE (Normalized)');
+title('Validation Loss Convergence');
+legend('show', 'Location', 'northeast');
+
+% Formatting Subplot 2 (Train)
+subplot(1, 2, 2);
+set(gca, 'YScale', 'log', 'FontSize', 11);
+xlabel('Epoch'); ylabel('Train MSE (Normalized)');
+title('Training Loss Convergence');
+legend('show', 'Location', 'northeast');
+
+fprintf('\n TIMING RESULTS\n');
+for k = 1:nOpt
+    fprintf('%-15s | Time: %6.2f sec | Min Val MSE: %.4e\n', ...
+        opt_list{k,1}, exec_times(k), min_val(k));
+end
+
+% Computes one runner's summary metrics as a row for the comparison table
+function row = benchmark_row(name, elapsed, results, losses)
+row.ANN_Runner   = string(name);
+row.Layers       = mat2str(results.layers);
+row.Time_total_s = elapsed;                                   % total time taken in the training
+row.Time_epoch_s = results.time(end)/results.num_epochs;      % mean time per epoch
+row.Train_MSE    = losses.meanTrainLoss;
+row.Best_Val_MSE = min(losses.valLoss);                       % best validation MSE
+row.Test_MSE     = losses.meanTestLoss;
+row.G            = losses.meanTestLoss/losses.meanTrainLoss;  % gap ratio (abs not needed, both > 0)
+row.Grad_evals   = results.n_updates;                            % cost > the number of updates (for benchmarking Twin ADAM)
+end
