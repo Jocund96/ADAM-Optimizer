@@ -14,6 +14,9 @@
 \usepackage{listings}
 \usepackage{tcolorbox}
 \usepackage{cite}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{placeins}
 
 \geometry{
     a4paper,
@@ -157,7 +160,7 @@ The MATLAB implementation consists of three main scripts:
 \end{algorithm}
 
 % =========================================================================
-\section{2D Benchmark Functions: Rosenbrock and Beale}
+\section{2D Benchmark Functions: Rosenbrock and Beale}\label{sec:bench2d}
 
 To evaluate the optimizer's performance on non-convex landscapes with narrow, ill-conditioned valleys, we test ADAM on two standard 2D benchmarks: the Rosenbrock function and the Beale function.
 
@@ -366,7 +369,7 @@ Newton's Method & $5$ \\
 \end{itemize}
 
 % =========================================================================
-\section{Medium-Scale Benchmark: 100D Extended Rosenbrock}
+\section{Medium-Scale Benchmark: 100D Extended Rosenbrock}\label{sec:bench100d}
 
 \subsection{Formulation and Gradient Derivation}
 Moving beyond 2D tests, we evaluate ADAM on a medium-scale benchmark by extending the Rosenbrock function to $D = 100$ design variables:
@@ -434,7 +437,7 @@ Design Variable Range $[\min(w^*), \max(w^*)]$ & $[-0.9933, 1.0000]$ \\
     \item \textbf{Coordinate Dynamics:} Figure~\ref{fig:100d_trajectories} tracks early ($w_1, w_2$), intermediate ($w_{50}$), and boundary ($w_{100}$) variables, illustrating coordinated convergence across all 100 dimensions.
 \end{itemize}
 
-\added{\subsection{Comparative Benchmark of Modern ADAM Variants}}
+\added{\subsection{Comparative Benchmark of Modern ADAM Variants}\label{sec:variants}}
 
 \added{To investigate algorithmic behavior across different optimizer formulations, we evaluated six variants on the same 100-dimensional Extended Rosenbrock benchmark ($w_0 = [-1.5, 2.0, \dots]^T$, $\alpha = 0.005$, $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\varepsilon = 10^{-8}$, $\tau = 10^{-5}$, max iterations $25{,}000$). For the dual-trajectory twin variant, the second starting point was initialized symmetrically as $w_{02} = [2.0, -1.5, \dots]^T$. Table~\ref{tab:100d_variants_benchmark} summarizes the empirical performance metrics. Note that Table~\ref{tab:100d_variants_benchmark} reports pure optimizer loop execution times without visualization logging, where baseline ADAM runs in $0.11$~s (compared to $0.96$~s in Table~\ref{tab:100d_metrics} when recording full step-by-step diagnostic trajectories).}
 
@@ -525,7 +528,7 @@ Preconditioned ADAM & $25{,}000$ & $0.91$ & $3.9874$ & $1.9933$ & $1.4066$ \\
     SPSA requires only $2$ function evaluations per step regardless of dimension $D$. The stochastic perturbation noise is subsequently smoothed by ADAM's momentum accumulator $m_t$.
 \end{itemize}}
 
-\added{\subsection{Twin-Gradient Step-Length Modulation}}
+\added{\subsection{Twin-Gradient Step-Length Modulation}\label{sec:twin}}
 
 \added{Standard ADAM updates a single solution vector, using exponential moving averages to move through narrow ravines. Inspired by De Magistris et al.~\cite{demagistris2026twin}, we implement a dual-trajectory version with two iterates, $w_1$ and $w_2$, initialized from different points. Unlike the full framework in~\cite{demagistris2026twin}, which uses Adaptive Barzilai--Borwein ($\text{ABB}_{\min}$) steps, damping, and orthogonal initialization, our implementation couples standard ADAM directions through a closed-form distance-minimizing step multiplier clamped to $[0.5, 3.5]$.}
 
@@ -637,7 +640,7 @@ Two safeguards stabilize the coupling without an objective line search:
 \FloatBarrier
 \subsection{Motivation}
 \label{sec:ann:motivation}
-The benchmarks in Sections 3 to 5 have at most 100 variables and a known minimum. Practical problems usually have far more unknowns, so in this section the ADAM variants are used to train an artificial neural network (ANN). The network for the 100-dimensional problem, with layers $[100, 128, 64, 1]$, already has $P = \sum_{l} n_l(n_{l-1}+1) = 21\,249$ parameters. Their gradient is obtained with the adjoint method at about the cost of one forward pass, while central finite differences would need $2P = 42\,498$ loss evaluations. Since the loss of a network has no known minimizer, performance is measured by the prediction error on unseen data instead of the distance to $w^*$.
+The benchmarks in Sections~\ref{sec:bench2d} to~\ref{sec:bench100d} have at most 100 variables and a known minimum. Practical problems usually have far more unknowns, so in this section the ADAM variants are used to train an artificial neural network (ANN). The network for the 100-dimensional problem, with layers $[100, 128, 64, 1]$, already has $P = \sum_{l} n_l(n_{l-1}+1) = 21\,249$ parameters. Their gradient is obtained with the adjoint method at about the cost of one forward pass, while central finite differences would need $2P = 42\,498$ loss evaluations. Since the loss of a network has no known minimizer, performance is measured by the prediction error on unseen data instead of the distance to $w^*$.
 
 \FloatBarrier
 \subsection{Network and Adjoint Gradient}
@@ -741,7 +744,7 @@ since a forward and an adjoint pass need about $2P$ and $4P$ operations per samp
 \end{algorithm}
 
 \paragraph{Twin ADAM.}
-The twin-gradient method of Section 6.4 \cite{demagistris2026twin} is applied to two independently initialised networks $\bm{\theta}_1,\bm{\theta}_2$ trained on the same batches. Their ADAM steps $\bm{s}_1,\bm{s}_2$ are scaled by
+The twin-gradient method of Section~\ref{sec:twin} \cite{demagistris2026twin} is applied to two independently initialised networks $\bm{\theta}_1,\bm{\theta}_2$ trained on the same batches. Their ADAM steps $\bm{s}_1,\bm{s}_2$ are scaled by
 \begin{equation}
   \min_{\gamma_1,\gamma_2}\ \big\| (\bm{\theta}_1 + \gamma_1\bm{s}_1) - (\bm{\theta}_2 + \gamma_2\bm{s}_2) \big\|_2^2 ,
   \qquad \gamma_{1,2}\in[0.5,\,3.5],
@@ -860,7 +863,7 @@ Twin ADAM did not reach a lower validation loss than ADAM on the 1D, 2D and 100D
 \FloatBarrier
 \subsection{Discussion}
 \label{sec:ann:discussion}
-The adjoint gradient agreed with finite differences to about $10^{-9}$ and made training with $21\,249$ unknowns practical. ADAM was best on the 1D and 2D fits and within about 4\% of the best elsewhere, AMSGrad was best on the 100D problem and AdamW on the Concrete data. The ranking of the direct Rosenbrock problem (Section 5.4), where AdamW was best and AMSGrad worst, therefore does not carry over to network training. Twin ADAM doubled the cost per update without improving the networks, although it can help on the single-basin problems of Section 6.4. Since all runs use one seed and the same hyperparameters, repeated runs and a learning-rate study would show how robust this ranking is.
+The adjoint gradient agreed with finite differences to about $10^{-9}$ and made training with $21\,249$ unknowns practical. ADAM was best on the 1D and 2D fits and within about 4\% of the best elsewhere, AMSGrad was best on the 100D problem and AdamW on the Concrete data. The ranking of the direct Rosenbrock problem (Section~\ref{sec:variants}), where AdamW was best and AMSGrad worst, therefore does not carry over to network training. Twin ADAM doubled the cost per update without improving the networks, although it can help on the single-basin problems of Section~\ref{sec:twin}. Since all runs use one seed and the same hyperparameters, repeated runs and a learning-rate study would show how robust this ranking is.
 
 
 % =========================================================================
