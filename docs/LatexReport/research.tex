@@ -877,6 +877,9 @@ We plan to extend our MATLAB optimization framework in the following directions:
     \item \added{\textbf{Stochastic Mini-Batch Analysis:} Benchmarking the ADAM variants under stochastic noise to evaluate variance adaptation on non-deterministic loss landscapes.}
     \item \textbf{Neural Network Training with LU decomposition:} Train linear and non-linear networks in MATLAB, using LU decomposition ($\mathbf{A} = \mathbf{L}\mathbf{U}$) to compute gradients efficiently and testing on MNIST.
     \item \added{\textbf{Uncertainty Quantification in Optimization:} Linking ADAM's adaptive variance vector $v_t$ with stochastic sensitivity estimation for structural reliability problems.}
+    \item \added{\textbf{Memory-Efficient ADAM Variants:} Studying and benchmarking methods such as HM-Adam, HM-AdamW, and Adam-mini to reduce the memory required for ADAM's moment estimates while preserving convergence and solution quality.}
+    \item \added{\textbf{Numerical Stability of ADAM Training:} Studying the interaction between ADAM's $\epsilon$ parameter, softmax, and cross-entropy implementations, with the aim of reducing numerical errors and improving training stability.}
+    \item \added{\textbf{Alternative Optimization Geometries and Training Schedules:} Comparing coordinate-wise ADAM with layer- or matrix-level methods such as Shampoo and Muon, as well as schedule-free training approaches, to evaluate their benefits on different optimization and neural-network problems.}
 \end{itemize}
 
 % =========================================================================
