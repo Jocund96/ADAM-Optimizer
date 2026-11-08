@@ -840,6 +840,7 @@ Twin ADAM has the lowest validation loss between about epoch 100 and 250 but the
   \label{fig:ann:conv100}
 \end{figure}
 
+\FloatBarrier
 \paragraph{Concrete data set.}
 The Concrete Compressive Strength data set \cite{yeh1998concrete} contains 1030 laboratory tests with 8 inputs (seven mixture components in kg/m$^3$ and the age in days) and the compressive strength in MPa as output. AdamW reaches the lowest test MSE. The validation loss of ADAM and AMSGrad rises again after about 6500 and 7000 epochs, which shows the onset of overfitting (Figure~\ref{fig:ann:real}).
 
@@ -871,9 +872,10 @@ The adjoint gradient agreed with finite differences to about $10^{-9}$ and made 
 
 We plan to extend our MATLAB optimization framework in the following directions:
 \begin{itemize}
-    \item \added{\textbf{Stochastic Mini-Batch Analysis:} Benchmarking ADAM-DG and AdamW under stochastic noise to evaluate variance adaptation on non-deterministic loss landscapes.}
-    \item \added{\textbf{High-Dimensional Scaling ($D = 10^3 \dots 10^5$):} Implementing matrix-free Hessian-vector products ($H v \approx \frac{\nabla f(w + \delta v) - \nabla f(w)}{\delta}$) to capture directional curvature at large dimensions without forming full matrices.}
-    \item \textbf{Neural Network Training with Adjoint Gradients:} Train linear and non-linear networks in MATLAB, using LU decomposition ($\mathbf{A} = \mathbf{L}\mathbf{U}$) and the adjoint state method to compute gradients efficiently for regression and MNIST.
+    \item \added{\textbf{Twin ADAM on Single-basin problems:} Testing and benchmarking Twin ADAM on structural optimization problems with one clear minimum, where the method is expected to help.}
+    \item \added{\textbf{Tweakig Twin ADAM for robustness:}  Tweaking the Twin ADAM logic further by doing parallel or stacked gradient compututation,  or by shifting the second runs closer to the first which has lower error, decreasing the coupling frequency of both the twins. }
+    \item \added{\textbf{Stochastic Mini-Batch Analysis:} Benchmarking the ADAM variants under stochastic noise to evaluate variance adaptation on non-deterministic loss landscapes.}
+    \item \textbf{Neural Network Training with LU decomposition:} Train linear and non-linear networks in MATLAB, using LU decomposition ($\mathbf{A} = \mathbf{L}\mathbf{U}$) to compute gradients efficiently and testing on MNIST.
     \item \added{\textbf{Uncertainty Quantification in Optimization:} Linking ADAM's adaptive variance vector $v_t$ with stochastic sensitivity estimation for structural reliability problems.}
 \end{itemize}
 
